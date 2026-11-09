@@ -54,6 +54,10 @@ public class EntityManager {
             throw new IllegalArgumentException("Entity with ID " + entity_id + " does not exist.");
         }
     }
+
+    public Map<Integer, Entity> getAllEntities(){
+        return entities;
+    }
 }
 
 
