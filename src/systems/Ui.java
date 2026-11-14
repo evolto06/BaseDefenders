@@ -129,6 +129,13 @@ final class Ui {
         if (saved != null) g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, saved);
     }
 
+    /** Draws a picture as large as fits a square box, centred in it and keeping its proportions. */
+    static void fit(Graphics2D g, BufferedImage image, int x, int y, int box) {
+        float scale = box / (float) Math.max(image.getWidth(), image.getHeight());
+        int w = Math.round(image.getWidth() * scale), h = Math.round(image.getHeight() * scale);
+        g.drawImage(image, x + (box - w) / 2, y + (box - h) / 2, w, h, null);
+    }
+
     static Color pulse(Color color, float time) {
         int alpha = 150 + (int) (105 * Math.sin(time * 5));
         return new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha);

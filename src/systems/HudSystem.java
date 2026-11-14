@@ -562,7 +562,7 @@ public final class HudSystem {
                 g.fillRoundRect(x - 2, r.y + 28, slotWidth - 4, 84, 8, 8);
             }
             BufferedImage image = game.assets.enemy(entry.getKey())[0];
-            g.drawImage(image, middle - size / 2, r.y + 58 - size / 2, size, size, null);
+            Ui.fit(g, image, middle - size / 2, r.y + 58 - size / 2, size);
             g.setColor(TEXT);
             String count = "x" + entry.getValue();
             g.drawString(count, middle - g.getFontMetrics().stringWidth(count) / 2, r.y + 102);
@@ -573,7 +573,7 @@ public final class HudSystem {
     private void drawEnemyTip(Graphics2D g, EnemyType type, WavePlan plan) {
         Rectangle tip = new Rectangle(Layout.PREVIEW.x, Layout.BAR_Y - 138, TOOLTIP_W, 126);
         Ui.card(g, tip);
-        g.drawImage(game.assets.enemy(type)[0], tip.x + 10, tip.y + 10, 32, 32, null);
+        Ui.fit(g, game.assets.enemy(type)[0], tip.x + 10, tip.y + 10, 32);
         g.setFont(HEAD);
         g.setColor(TEXT);
         g.drawString(type.label, tip.x + 52, tip.y + 24);

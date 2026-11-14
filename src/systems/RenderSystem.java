@@ -46,6 +46,8 @@ public final class RenderSystem {
     private static final float FLY_HEIGHT = 14;
     private static final float ARC_HEIGHT = 30;
     private static final float SQUASH = 0.07f;
+    /** Drawn animation frames shown per second: a Dragon beats its wings two and a half times. */
+    private static final float FRAME_RATE = 5;
     private static final int BOLT_SEGMENTS = 5;
 
     private static final Color MAX_GLOW = new Color(251, 191, 36), MUZZLE = new Color(255, 244, 200);
@@ -297,7 +299,10 @@ public final class RenderSystem {
             Health h = healths.get(e);
             Status s = statuses.get(e);
             int side = sprite.flip ? 1 : 0;
-            BufferedImage image = sprite.flip ? sprite.flipped : sprite.image;
+            // A monster with drawn frames steps through them; the rest are animated by squashing.
+            int frames = game.assets.enemyFrames(enemy.type);
+            int frame = frames > 1 ? (int) (enemy.animTime * FRAME_RATE) % frames : 0;
+            BufferedImage image = game.assets.enemy(enemy.type, frame)[side];
             int w = image.getWidth(), ht = image.getHeight();
             int r = Math.round(enemy.type.radius);
             int cx = Math.round(p.x), cy = Math.round(p.y);
@@ -305,7 +310,7 @@ public final class RenderSystem {
             // Walkers squash and stretch as they step; flyers flap and bob in the air.
             float scaleX, scaleY, lift;
             if (flying) {
-                scaleX = 0.76f + 0.24f * Math.abs((float) Math.sin(enemy.animTime * 11));
+                scaleX = frames > 1 ? 1 : 0.76f + 0.24f * Math.abs((float) Math.sin(enemy.animTime * 11));
                 scaleY = 1;
                 lift = FLY_HEIGHT + (float) Math.sin(enemy.animTime * 4) * 3;
             } else {
@@ -321,7 +326,7 @@ public final class RenderSystem {
             stretched(g, image, left, top, dw, dh);
             if (enemy.flash > 0) {
                 g.setComposite(Stamps.alpha(Math.min(1, enemy.flash) * 0.75f));
-                stretched(g, game.assets.enemySilhouette(enemy.type)[side], left, top, dw, dh);
+                stretched(g, game.assets.enemySilhouette(enemy.type, frame)[side], left, top, dw, dh);
                 g.setComposite(saved);
             }
 
