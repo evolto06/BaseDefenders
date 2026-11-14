@@ -7,6 +7,8 @@ import java.awt.FontMetrics;
 import java.awt.GradientPaint;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 
 /** Shared look of the interface: palette, fonts and the few widgets every screen draws. */
 final class Ui {
@@ -39,13 +41,14 @@ final class Ui {
     private static final String[][] HELP_RULES = {
         {"Goal", "Monsters walk the road to your keep. Each one that arrives costs lives. Survive 30 waves."},
         {"Mana", "Refills on its own, faster every wave. It stops when the bar is full, so keep spending it."},
-        {"Build", "Drag a card from your hand onto a free tile, or press 1-6 and click a tile."},
+        {"Build", "Drag a card from your hand onto a free tile, or press 1-7 and click a tile."},
         {"Upgrade", "Drag a tower onto its twin (same tower, same tier), or select it and press E. Tier 4 is the top."},
         {"Fuse", "Drag a base tower onto a different base tower of the same tier to make a hybrid with a new power."},
         {"Scout", "Hover the next-wave icons to see what is coming. Press C for the fusion chart."},
+        {"Hex", "Healers, drummers and summoners make a wave stronger. A hexed monster loses its powers."},
     };
     private static final String[][] HELP_KEYS = {
-        {"1-6", "Pick a card"}, {"Space", "Start / call next wave"}, {"E", "Upgrade selected"},
+        {"1-7", "Pick a card"}, {"Space", "Start / call next wave"}, {"E", "Upgrade selected"},
         {"X", "Sell selected"}, {"F", "Game speed"}, {"P", "Pause menu"},
         {"C", "Fusion chart"}, {"H", "This help"}, {"Esc", "Cancel / pause"},
     };
@@ -110,6 +113,22 @@ final class Ui {
         g.drawString(text, x, baseline);
     }
 
+    /**
+     * Draws a screen-sized picture in one pass. At a fractional screen scale it is smoothed only
+     * when the graphics card does the work: in software, smoothing a picture this size costs
+     * more than the rest of the frame put together.
+     */
+    static void layer(Graphics2D g, BufferedImage image, int x, int y) {
+        double scale = g.getTransform().getScaleX();
+        boolean whole = Math.abs(scale - Math.rint(scale)) < 0.01;
+        boolean smooth = !whole && g.getDeviceConfiguration().getImageCapabilities().isAccelerated();
+        Object saved = g.getRenderingHint(RenderingHints.KEY_INTERPOLATION);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, smooth
+                ? RenderingHints.VALUE_INTERPOLATION_BILINEAR : RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+        g.drawImage(image, x, y, null);
+        if (saved != null) g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, saved);
+    }
+
     static Color pulse(Color color, float time) {
         int alpha = 150 + (int) (105 * Math.sin(time * 5));
         return new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
@@ -139,7 +158,7 @@ final class Ui {
     static void drawHelp(Graphics2D g) {
         g.setColor(VEIL);
         g.fillRect(0, 0, Layout.WIDTH, Layout.HEIGHT);
-        Rectangle r = new Rectangle((Layout.WIDTH - 760) / 2, (Layout.HEIGHT - 440) / 2, 760, 440);
+        Rectangle r = new Rectangle((Layout.WIDTH - 760) / 2, (Layout.HEIGHT - 470) / 2, 760, 470);
         card(g, r);
         g.setFont(BIG);
         g.setColor(GOLD);
