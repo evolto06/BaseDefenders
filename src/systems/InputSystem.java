@@ -252,9 +252,12 @@ public final class InputSystem implements GameSystem {
             else if (!game.gameOver && (code == KeyEvent.VK_P || code == KeyEvent.VK_ESCAPE)) game.paused = false;
             return;
         }
+        if (code >= KeyEvent.VK_1 && code < KeyEvent.VK_1 + TowerType.BASES.length) {
+            // The number keys pick the cards of the hand, left to right.
+            choose(TowerType.BASES[code - KeyEvent.VK_1]);
+            return;
+        }
         switch (code) {
-            case KeyEvent.VK_1, KeyEvent.VK_2, KeyEvent.VK_3, KeyEvent.VK_4, KeyEvent.VK_5, KeyEvent.VK_6 ->
-                choose(TowerType.BASES[code - KeyEvent.VK_1]);
             case KeyEvent.VK_ESCAPE -> {
                 // Esc backs out of whatever is in hand; with nothing in hand it opens the menu.
                 if (game.placing != null || game.selected != World.NONE) cancel();
