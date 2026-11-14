@@ -29,11 +29,11 @@ The game opens on a title screen; **Play** leads to the map select.
 Your best wave on each map is remembered between sessions.
 
 In a match the field fills the window. Along the bottom sit the next-wave preview, your hand of
-six tower cards over the mana bar, and the wave/speed/pause controls.
+seven tower cards over the mana bar, and the wave/speed/pause controls.
 
 - **Mana** regenerates constantly (faster each wave) and is the only currency. Unspent mana is
   wasted once the bar is full.
-- **Build**: drag a card from the hand onto a free tile, or press `1`-`6` (or click a card) and
+- **Build**: drag a card from the hand onto a free tile, or press `1`-`7` (or click a card) and
   then click tiles. The first wave waits until you press `Space`.
 - **Upgrade (tiers 2, 3, 4)**: drag a tower onto an identical tower of the same tier, or select
   it and press `E` (or the Upgrade button on its card) to pull in the nearest twin. The two merge
@@ -49,7 +49,7 @@ six tower cards over the mana bar, and the wave/speed/pause controls.
 
 | Key | Action |
 | --- | --- |
-| `1`-`6` | Pick a tower to build |
+| `1`-`7` | Pick a tower to build |
 | `Space` | Start the first wave / call the next one early (bonus mana) |
 | `E` | Upgrade the selected tower with its nearest twin |
 | `H` | Help |
@@ -70,6 +70,7 @@ six tower cards over the mana bar, and the wave/speed/pause controls.
 | Tesla Coil | 70 | Chain lightning, ignores armor |
 | Venom Spitter | 55 | Poisons its target, spreading shots across unpoisoned enemies |
 | Sun Prism | 80 | Constant beam that ramps to 3x damage on a held target |
+| Hex Totem | 50 | Hexes its target, healers and other casters first: no healing, no powers |
 
 ### Hybrids
 
@@ -90,12 +91,49 @@ six tower cards over the mana bar, and the wave/speed/pause controls.
 | Plague Coil | Tesla + Venom | Chained poison that spreads when its host dies | Low direct damage |
 | Arc Prism | Tesla + Prism | Ramping beam split across three targets | Shorter range |
 | Siphon Ray | Venom + Prism | Generates extra mana while it fires | Weak damage |
+| Witch Hunter | Ballista + Hex | Shoots healers, drummers and summoners first for triple damage, and hexes | Slow reload, ordinary against the rest |
+| Doom Mortar | Mortar + Hex | Blast hexes and dooms: the doomed explode when they die | Weak blast of its own, no flyers |
+| Dread Obelisk | Frost + Hex | Pulse hexes everything in range and sends it fleeing back down the road | Almost no damage, bosses hardly flinch |
+| Reaper Coil | Tesla + Hex | Hexing chain lightning that executes badly wounded monsters | Weaker arcs |
+| Rot Spitter | Venom + Hex | Rot turns healing and regeneration into damage | Only a poison dart when nothing heals |
+| Soul Prism | Prism + Hex | Hexing beam that keeps its heat when its target dies | Weaker beam |
 
 ### Monsters
 
-Slimes split in two when killed. Goblins are fast. Orcs are armored (magic ignores armor). Bats
-fly straight to the keep along the dotted trail, ignoring the road. Shamans heal the monsters
-around them. Wraiths cannot be slowed or frozen. A Golem boss arrives every fifth wave.
+| Monster | From wave | What it does |
+| --- | --- | --- |
+| Slime | 1 | Splits in two when killed |
+| Goblin | 2 | Fast, comes in swarms |
+| Orc | 3 | Armored: physical hits are reduced (magic ignores armor) |
+| Bat | 4 | Flies straight to the keep along the dotted trail |
+| Shaman | 7 | Heals the monsters around it |
+| Wraith | 9 | Cannot be slowed or frozen |
+| Troll | 11 | Regrows its health as it walks |
+| Rune Knight | 13 | Warded: magic deals 60% less |
+| Gargoyle | 16 | Flies, and is armored |
+| War Drummer | 18 | Speeds up every monster around it |
+| Necromancer | 21 | Raises Skeletons as it walks |
+
+A boss wave comes every fifth wave, led by the next boss in line and backed by the ones before
+it; wave 30 fields all four.
+
+| Boss | First seen | What it does |
+| --- | --- | --- |
+| Golem | 5 | Heavy armor, shrugs off slows |
+| Dragon | 10 | Flies straight for the keep, out of reach of Mortars |
+| Lich | 15 | Mends the monsters around it, raises Skeletons, resists magic |
+| Hydra | 20 | Regrows its health and splits into three Hydra Spawn when slain |
+
+### Hexes and healing
+
+A **hexed** monster cannot be healed and loses its powers: Shamans and Liches stop healing,
+Trolls and Hydras stop regrowing, Drummers and summoners fall silent, Rune Knights lose their
+ward, Wraiths can be slowed, and Slimes and Hydras die without splitting. Bosses shake a hex off
+in half the time. The Hex Totem and five of its hybrids apply it; the Rot Spitter instead makes
+healing hurt its victim.
+
+Healers do not stack without limit: a monster that was just mended ignores every healer for the
+next 1.5 seconds, and a healing pulse restores only a quarter as much on a boss.
 
 ## Architecture
 
@@ -112,13 +150,39 @@ src/
   safely resolves to "not alive".
 - **Components** are data only and live in one dense array per type; each entity has a bitmask.
 - **Systems** run in a fixed order at a fixed 60 Hz step (`Game.simulation`): waves, economy,
-  status effects, movement, healers, spatial index, towers, projectiles, zones, deaths, effects.
+  status effects, movement, healers, drummers, summoners, spatial index, towers, projectiles,
+  zones, deaths, effects.
   Input, building and rendering run once per frame and keep working while paused.
 - Global state that is not an entity (mana, lives, wave, UI selection) lives on `Game`.
 - Enemies are indexed in a uniform grid rebuilt each step, so targeting, splash and chain
   lightning only look at nearby cells.
 - All art is generated at startup in `game/Assets.java` (ASCII pixel maps for monsters,
-  primitives for towers and terrain).
+  primitives for terrain) and `game/TowerArt.java` (one pixel map per tower).
+- Drawing is built to stay fast without the graphics card, because Java turns its Direct3D
+  pipeline off on many laptops and then paints everything in software:
+  - The field is drawn at its own size into an off-screen picture and copied to the window in
+    one pass (`RenderSystem`). Text and build overlays go straight to the screen, so they stay
+    sharp at any window or display scale.
+  - Terrain and tower platforms sit in a ground layer that is repainted only when a tower is
+    built, merged or sold.
+  - Shadows, glows, explosion flashes, turret headings and the squash of a walking monster are
+    pictures painted once and stamped (`Stamps`); beams, lightning, rings and sparks are
+    blended straight into the pixels (`Pixels`). Neither allocates while the game runs, which
+    keeps the garbage collector from pausing the frame.
+  - The status bar, the bottom bar and the selected tower's card are painted into pictures and
+    repainted a few times a second, or at once when the pointer moves onto something
+    (`HudSystem`).
 
 To add a tower, add a constant to `TowerType`, its attack to `TowerSystem.fire` (and
-`ProjectileSystem.impact` if it shoots), and its turret art to `Assets.turretArt`.
+`ProjectileSystem.impact` if it shoots), and its sprite to `TowerArt.turret`. A tower that
+turns is drawn from above pointing right (top half only, it is mirrored); one that stands
+still is drawn from the front, with `TowerType.emitterLift` saying where its shots start.
+A new base tower needs a hybrid for every other base; the hand, the number keys and the fusion
+chart size themselves from `TowerType.BASES`.
+
+To add a monster, add a constant to `EnemyType` and its sprite to `Assets.enemyArt`, give it a
+power by attaching a component in `Prefabs.enemy`, and list it in `WavePlan.UNLOCK_ORDER` (or
+`EnemyType.BOSSES`). Powers should check `Combat.hexed` so a hex can switch them off. A sprite
+is drawn facing right, at any width and height, and shown at `EnemyType.scale` times its size.
+Most monsters are one picture, brought to life by squashing it; one that needs real frames, as
+the Dragon does for its wingbeat, returns them from `Assets.frameArt`.

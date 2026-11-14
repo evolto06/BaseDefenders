@@ -10,21 +10,20 @@ import java.util.Map;
 import java.util.Random;
 
 /**
- * All art, generated in code at startup: monsters from ASCII pixel maps, towers and terrain
- * from primitives on a small canvas, then scaled up with nearest-neighbour for a pixel-art look.
+ * All art, generated in code at startup: monsters and towers ({@link TowerArt}) from ASCII pixel
+ * maps, terrain from primitives on a small canvas, then scaled up with nearest-neighbour for a
+ * pixel-art look.
  */
 public final class Assets {
     /** Towers and terrain are drawn at this tile size and doubled. */
-    private static final int ART = Level.TILE / 2;
-    /** Platform rim colour per tier: stone, bronze, silver, gold. */
-    private static final int[] TIER_RIM = {0x5B6472, 0xB87333, 0xC9D1DC, 0xF5C542};
-    private static final int[] TIER_RIM_DARK = {0x2B303A, 0x6B3F16, 0x6B7280, 0x92660A};
+    static final int ART = Level.TILE / 2;
 
     private final Map<MapDef, BufferedImage> backgrounds = new EnumMap<>(MapDef.class);
-    /** Darkens the edges of the field. */
-    public final BufferedImage vignette;
-    private final Map<EnemyType, BufferedImage[]> enemies = new EnumMap<>(EnemyType.class);
-    private final Map<EnemyType, BufferedImage[]> silhouettes = new EnumMap<>(EnemyType.class);
+    /** Darkens the edges of the field; painted into every terrain. */
+    private final BufferedImage vignette;
+    /** Per monster: each animation frame, facing right and mirrored. Most monsters have one frame. */
+    private final Map<EnemyType, BufferedImage[][]> enemies = new EnumMap<>(EnemyType.class);
+    private final Map<EnemyType, BufferedImage[][]> silhouettes = new EnumMap<>(EnemyType.class);
     private final Map<TowerType, BufferedImage[]> bases = new EnumMap<>(TowerType.class);
     private final Map<TowerType, BufferedImage> turrets = new EnumMap<>(TowerType.class);
     private final Map<TowerType, BufferedImage[]> icons = new EnumMap<>(TowerType.class);
@@ -32,17 +31,23 @@ public final class Assets {
 
     public Assets() {
         for (EnemyType type : EnemyType.values()) {
-            BufferedImage image = scale(enemyArt(type), type.scale);
-            enemies.put(type, new BufferedImage[] {image, mirror(image)});
-            BufferedImage white = silhouette(image);
-            silhouettes.put(type, new BufferedImage[] {white, mirror(white)});
+            BufferedImage[] art = frameArt(type);
+            BufferedImage[][] frames = new BufferedImage[art.length][], flashes = new BufferedImage[art.length][];
+            for (int f = 0; f < art.length; f++) {
+                BufferedImage image = scale(art[f], type.scale);
+                BufferedImage white = silhouette(image);
+                frames[f] = new BufferedImage[] {image, mirror(image)};
+                flashes[f] = new BufferedImage[] {white, mirror(white)};
+            }
+            enemies.put(type, frames);
+            silhouettes.put(type, flashes);
         }
         for (TowerType type : TowerType.values()) {
-            BufferedImage turret = turretArt(type);
+            BufferedImage turret = TowerArt.turret(type);
             BufferedImage[] tierBases = new BufferedImage[TowerType.MAX_TIER];
             BufferedImage[] tierIcons = new BufferedImage[TowerType.MAX_TIER];
             for (int tier = 1; tier <= TowerType.MAX_TIER; tier++) {
-                BufferedImage base = towerBase(type, tier);
+                BufferedImage base = TowerArt.base(type, tier);
                 BufferedImage icon = new BufferedImage(ART, ART, BufferedImage.TYPE_INT_ARGB);
                 Graphics2D g = icon.createGraphics();
                 g.drawImage(base, 0, 0, null);
@@ -61,17 +66,36 @@ public final class Assets {
 
     /** The painted terrain of a map, built the first time it is asked for. */
     public BufferedImage background(MapDef map) {
-        return backgrounds.computeIfAbsent(map, m -> paintTerrain(new Level(m)));
+        return backgrounds.computeIfAbsent(map, m -> {
+            BufferedImage terrain = paintTerrain(new Level(m));
+            Graphics2D g = terrain.createGraphics();
+            g.drawImage(vignette, 0, 0, null);
+            g.dispose();
+            return terrain;
+        });
     }
 
-    /** Index 0 faces right, index 1 is mirrored. */
+    /** The monster's portrait: its first frame. Index 0 faces right, index 1 is mirrored. */
     public BufferedImage[] enemy(EnemyType type) {
-        return enemies.get(type);
+        return enemies.get(type)[0];
     }
 
-    /** All-white copies of the enemy sprites, drawn over them as a hit flash. */
-    public BufferedImage[] enemySilhouette(EnemyType type) {
-        return silhouettes.get(type);
+    /**
+     * How many drawn frames the monster cycles through. Most have one and are brought to life by
+     * squashing it; the Dragon has two, for its wingbeat.
+     */
+    public int enemyFrames(EnemyType type) {
+        return enemies.get(type).length;
+    }
+
+    /** One frame of the monster. Index 0 faces right, index 1 is mirrored. */
+    public BufferedImage[] enemy(EnemyType type, int frame) {
+        return enemies.get(type)[frame];
+    }
+
+    /** All-white copies of a frame, drawn over it as a hit flash. */
+    public BufferedImage[] enemySilhouette(EnemyType type, int frame) {
+        return silhouettes.get(type)[frame];
     }
 
     public BufferedImage base(TowerType type, int tier) {
@@ -92,6 +116,12 @@ public final class Assets {
     }
 
     // ---- monsters ------------------------------------------------------------------------
+
+    /** The frames a monster is drawn with, in order. */
+    private static BufferedImage[] frameArt(EnemyType type) {
+        if (type == EnemyType.DRAGON) return new BufferedImage[] {dragon(true), dragon(false)};
+        return new BufferedImage[] {enemyArt(type)};
+    }
 
     private static BufferedImage enemyArt(EnemyType type) {
         return switch (type) {
@@ -187,50 +217,310 @@ public final class Assets {
                 ".oooooooooooo.s.",
             }, "owkbBsyYg", 0x16204A, 0xE8E0D0, 0x101010, 0x3F6FD8, 0x2B4FA8, 0x7A4B24, 0xFFE14A,
                     0xFFF6B0, 0x8BC34A);
+            // A hooded spectre: an empty cowl with two cold lights, trailing rags.
             case WRAITH -> pixelArt(new String[] {
+                ".......ooo......",
+                "......oCCCo.....",
+                ".....oCcccCo....",
+                "....oCckkkcCo...",
+                "....oCkkkkkDo...",
+                "...oCckekekcCo..",
+                "...oCckkkkkcDo..",
+                "...oCckkkkkcDo..",
+                "..oCcccckccccCo.",
+                ".oCcccccccccccCo",
+                "oCDcccccccccccDC",
+                "bboCccccccDccDbb",
+                "...oCccDcDoCDo..",
+                "....oCDoCDooo...",
+                "....oCooCo......",
+                ".....o..o.......",
+            }, "ocCDkeb", 0xB0204058, 0xD0BFE3EE, 0xE6E6F7FB, 0xC88FB8CC, 0xF00B1420, 0x67E8F9, 0xF0F2EEDD);
+            case TROLL -> pixelArt(new String[] {
+                "................",
+                "....oooooo......",
+                "...oMMMMMMo.....",
+                "..ogggggggGo.oo.",
+                "..ogykggykGoobBo",
+                "..oggggggGGoobBo",
+                "..ogwmmmmwGo.obo",
+                "...oggggGGo..obo",
+                ".ooggggggGGooobo",
+                "oggggggggGGGggbo",
+                "ogGoggggGGGoggo.",
+                "ogGoggggGGGo.o..",
+                ".oo.ollllllo....",
+                "....oggoogGo....",
+                "...ogggoogGGo...",
+                "...oooo.ooooo...",
+            }, "ogGMykwmbBl", 0x16261A, 0x6FA07A, 0x4E7A5C, 0x3F7D3A, 0xFDE047, 0x101010, 0xF2F2E0,
+                    0x2A1A1A, 0x7A4B24, 0xA06A3A, 0x8B5E34);
+            case KNIGHT -> pixelArt(new String[] {
+                ".......pp.......",
+                "......oppo......",
+                "....ooSSSsoo....",
+                "...oSSSssssdo...",
+                "...oSkkkkkkdo...",
+                "...oSkekkekdo...",
+                "...oSSsssssdo...",
+                "....oSsvsdoo....",
+                ".ooossSvVsssooo.",
+                "oVvosSvVVvsdosSo",
+                "ovVosSsvVssdosso",
+                "oVvossSvVsddosso",
+                ".oo.osssssdo.oo.",
+                "....osso.osdo...",
+                "....osso.osdo...",
+                "....oooo.oooo...",
+            }, "osSdvVkpe", 0x161426, 0x8E96AD, 0xC3CAD9, 0x5A6178, 0x8B5CF6, 0xDDD6FE, 0x0B0B14,
+                    0x6D5BD0, 0x67E8F9);
+            // Stone wings arched high over a crouched, horned body.
+            case GARGOYLE -> pixelArt(new String[] {
+                "..o..o....o..o..",
+                ".omooLo..oLoomo.",
+                "omMmoLooooLomMmo",
+                "ommMmoLLLLomMmmo",
+                "ommmmmessemmmmmo",
+                "ommmMmssssmMmmmo",
+                ".ommmMswwsMmmmo.",
+                ".ommmmmssmmmmmo.",
+                ".ommmmssssmmmmo.",
+                "..oomssssssmoo..",
+                "...omssddssmo...",
+                "....oLsddsdo....",
+                "...oLssddssLo...",
+                "...oLsdooLsdo...",
+                "..oLdddooLddLo..",
+                "...oooo..oooo...",
+            }, "osLdmMew", 0x1C2028, 0x7B8494, 0xA5AEBD, 0x566070, 0x3F4756, 0x5A6475, 0xF59E0B, 0xF1F5F9);
+            case DRUMMER -> pixelArt(new String[] {
                 "................",
                 ".....oooooo.....",
-                "...oowwwwwwoo...",
-                "..owwwwwwwwwwo..",
-                ".owwwwwwwwwwwwo.",
-                ".owwkkwwwwkkwwo.",
-                ".owwkkwwwwkkwwo.",
-                ".owwwwwwwwwwwwo.",
-                ".owwwwwkkwwwwwo.",
-                ".owwwwwkkwwwwwo.",
-                ".owwwwwwwwwwwwo.",
-                ".owwwwwwwwwwwwo.",
-                ".owwwwwwwwwwwwo.",
-                ".owwwowwwwowwwo.",
-                ".owwo.owwo.owwo.",
-                "..oo...oo...oo..",
-            }, "owk", 0xB0306070, 0xC8D8F8FF, 0xFF103040);
+                ".o..oRRRRrro..o.",
+                ".oooRRRRRRrrooo.",
+                "..orRwkRRwkrro..",
+                "...oRRRRRRrro...",
+                "s...oRmmmmro...s",
+                ".s...oooooo...s.",
+                "..sooDDDDDDoos..",
+                "..orobbbbbboro..",
+                "..orodDDDDdoro..",
+                "...oodDDDDdoo...",
+                "....obbbbbbo....",
+                ".....orooro.....",
+                "....oro..oro....",
+                "....ooo..ooo....",
+            }, "orRwkmsdDb", 0x2B160C, 0xC2562B, 0xE07B4A, 0xFFFFFF, 0x101010, 0x3B1F1F, 0xE8D5A8,
+                    0x8B5E34, 0xF2E6C8, 0xFACC15);
+            case NECROMANCER -> pixelArt(new String[] {
+                ".g.....oo.......",
+                "gGg...oPPo......",
+                ".g...oPPPpo.....",
+                ".s..oPPPPPpo....",
+                ".s..oPbbbbpo....",
+                ".s..oPgbbgpo....",
+                ".s..oPbkkbpo....",
+                ".so.oPPbbppo....",
+                ".sboPPPPPPppo...",
+                ".soPPPPPPPpppo..",
+                ".s.oPPPdPPpppo..",
+                ".s.oPPPdPPpppo..",
+                ".s.oPPdPPPpppo..",
+                ".s.oPPdPPppppo..",
+                ".soPPPPPPPppppo.",
+                ".sooooooooooooo.",
+            }, "opPdbkgGs", 0x150A1F, 0x5B2A86, 0x7E3FA8, 0x3B1A5A, 0xE8E0D0, 0x101010, 0x86EFAC,
+                    0xECFDF5, 0x6B5A48);
+            case SKELETON -> pixelArt(new String[] {
+                "................",
+                ".....oooooo.....",
+                "....oBBBBBbo....",
+                "....oBkBBkbo....",
+                "....oBkBBkbo....",
+                "....oBBBBbbo....",
+                ".....obkbkbo....",
+                "......oooo......",
+                "..oo.obbbbo.oo..",
+                ".obooBkBBkBoobo.",
+                ".obo.obbbbo.obo.",
+                ".oo..oBkkBo..oo.",
+                ".....obbbbo.....",
+                ".....obo.obo....",
+                ".....obo.obo....",
+                "....ooo..ooo....",
+            }, "obBk", 0x1F1F1F, 0xD6CFBE, 0xFFFFFF, 0x101010);
+            case DRAGON -> dragon(true);
+            // A crowned skull over a tattered robe, a staff with a cold orb in one bony hand.
+            case LICH -> pixelArt(new String[] {
+                "........o.oyyo.o........",
+                ".......oyoyyyyoyo...ooo.",
+                ".......oyyyeeyyyo..oEEeo",
+                ".......oyyyyyyyyo..oEeeo",
+                "........oooBbnoo...oeeeo",
+                "........oBBbbbBBo..oeeeo",
+                "........oBkkbkkno...oso.",
+                "........oBekbkeno...oso.",
+                "........oBbbkbbno...oso.",
+                "......ooooBbbbnoooo.oso.",
+                ".....odVVokbknooVVdooso.",
+                "....odvdvVvvvvVVvdvdoso.",
+                "....oVvvdyyyyyyvdvvvVso.",
+                "...oVvvdvvvyyvvvvdvvvso.",
+                "..oVvvddvVveevvdvddvvso.",
+                "..oVvdoVvVvvdvvdvdoVvsVo",
+                ".oVvvdoVvVvvdvvdvdoobbb.",
+                "..oVdoVvvVvvdvvdvdo.oso.",
+                "..bbboVvvVvvdvvdvvVooso.",
+                "..b.boVvvvvvdvvvvvdooso.",
+                ".....oVvvdvvdvvdvvdooso.",
+                ".....oVvdoVdoVdoVvdooso.",
+                "......oVooVdoVdooVo.oso.",
+                ".......o..oo.oo..o...o..",
+            }, "obBnvVdyYeEks", 0x12091F, 0xD6CFBE, 0xFFFFFF, 0x9C947F, 0x5B21B6, 0x8B5CF6, 0x3B1578,
+                    0xFBBF24, 0xFDE68A, 0x67E8F9, 0xECFEFF, 0x0B0B14, 0x6B5A48);
+            // Three snake heads on long necks, fanning out of a coiled body.
+            case HYDRA -> pixelArt(new String[] {
+                "..............o.............",
+                "............ooToo...........",
+                "...........oTTtTTo..........",
+                "...oooo....oTytydo....oooo..",
+                "..oTTTTo...oTtttdo...oTTTTo.",
+                ".ooTyttTo..oTwtwdo..oTttydoo",
+                "oTTttttdo...oTptdo..oTttttTT",
+                "pTttttdo....oTptdo...oTttttd",
+                ".wTwdttTo....oTttTo.oTttdwdw",
+                "..oooTttTo...oTbtdooTttdooo.",
+                ".....oTttTo.oTbbdooTttdo....",
+                ".....oTttdooTtbtdooTttdo....",
+                ".....oTttdoTtbbdo.oTttdo....",
+                "....oTttdooTtbtdo..oTttTo...",
+                "...oTtttdooTbbdo...oTtttTo..",
+                "...oTttdoooTtbtTo..ooTttdo..",
+                "...oTtttTToTtbbdoooTTtttdo..",
+                "....oTttttTttbbtTTTttttdoTo.",
+                "....oTdtttttttttttttttddoTTo",
+                ".....ooTtttttttttttttdoo.oTT",
+                "......oTtttbbbbbbbtttdoooTtd",
+                ".......oTtbbbbbbbbbtttTTTttd",
+                "........oTdBbbbbbBdddtttttdo",
+                ".........oooTddddooooTddddo.",
+            }, "otTdykwbBp", 0x06302B, 0x1F9E89, 0x4FD1BB, 0x13705F, 0xFDE047, 0x101010, 0xFFFFFF, 0xB7F0C8,
+                    0x7FD4A8, 0xF43F5E);
+            // One small head on a short neck: what crawls out of a slain Hydra.
+            case HYDRA_SPAWN -> pixelArt(new String[] {
+                "................",
+                "........ooo.....",
+                "......ooTTTo....",
+                ".....oTTytyTo...",
+                ".....oTttttdo...",
+                ".....oTttwtdo...",
+                "....oTtttdpo....",
+                "...oTtttdoo.....",
+                "...oTttdo.......",
+                "...oTttdo.......",
+                "...oTtttToo...o.",
+                "....oTtttTTo.oTo",
+                "...oTttttttTooTT",
+                "..oTtbbbbbbtTTdo",
+                "...oTbbbbbbddddo",
+                "....ooooooooooo.",
+            }, "otTdykwbBp", 0x06302B, 0x1F9E89, 0x4FD1BB, 0x13705F, 0xFDE047, 0x101010, 0xFFFFFF, 0xB7F0C8,
+                    0x7FD4A8, 0xF43F5E);
+            // A hulk of mossy boulders with burning eyes and a molten crack down its chest.
             case GOLEM -> pixelArt(new String[] {
-                "....oooooooo....",
-                "...osssssssso...",
-                "...osyyssyyso...",
-                "...osyyssyyso...",
-                ".ooossssssssooo.",
-                "osssSssssssSssso",
-                "ossssSssssSsssso",
-                "osssossssssossso",
-                "osssossSSssossso",
-                "osssossssssossso",
-                "osso.osssso.osso",
-                ".oo..osssso..oo.",
-                "....osso.osso...",
-                "....osso.osso...",
-                "...ossso.ossso..",
-                "...ooooo.ooooo..",
-            }, "osSy", 0x2B2F36, 0x8A8F98, 0x5F646D, 0xFFA020);
+                "........................",
+                ".........oooooo.........",
+                "........LLLLLLLL........",
+                ".......oLssssssSo.......",
+                ".......oSSSSSSSSo.......",
+                "..ooooooLyYssYySoooooo..",
+                ".oLggLLoLssssssSoLggLLo.",
+                ".oLsggsLSskkkksSLssggSo.",
+                "oLsssssssSssssSsssssssLo",
+                "oLsssssssSssssSsssssssSo",
+                "oLsssssssSssysSsssssssSo",
+                ".oLsssssSssysysSsssssSo.",
+                ".oLssssSsssYssssSssssSo.",
+                "oLsssSSsssysyssssSSsssLo",
+                "oLssSoLsssssYssssSoLssSo",
+                "oLssSoLssssysssssSoLssSo",
+                "oLgssLoLsSssssSsSoLsssSo",
+                "oLsssSoLsssSSsssSoLssgSo",
+                "oLsssSoLssSooLssSoLsssSo",
+                "oLSsSSoLsSSooLssSoLSsSSo",
+                ".ooLoooLssSooLSsSoooLoo.",
+                "...o.oLsssSooLsssLo.o...",
+                ".....oLSSSSooLSSSSo.....",
+                "......ooooo..ooooo......",
+            }, "osLSyYkg", 0x1D2026, 0x8A8F98, 0xB4B9C2, 0x5F646D, 0xFFA020, 0xFFE08A, 0x15171C, 0x5E8C4A);
         };
+    }
+
+    /**
+     * The Dragon, seen from the side and facing right, with its near wing raised or beaten down:
+     * the two frames of its wingbeat.
+     */
+    private static BufferedImage dragon(boolean wingUp) {
+        String[] rows = wingUp ? new String[] {
+            "............o...................",
+            "...........oro..................",
+            "........oooMoo..o.....o..o......",
+            ".......oMMMMorooDoo..owoowo.....",
+            ".......omMMmmoo.oDDo..owowwo....",
+            ".......oMmmmmorooDDDo..owowoo...",
+            ".....ooMoMmmmmoooDDDDo.oRwekRoo.",
+            "....oMomMmmmmmorooDDDo.oRrrrrRdo",
+            ".oo.ommmmmmmmmorooDDDooRrrrrrrrR",
+            "oddo.omMmmmmmmmoroDDDooRrrdddddd",
+            ".oddooMommmmmmmoroDDDoRrrdowowow",
+            ".oddooommmmmmmmmoroDoRrryYo.....",
+            ".oRooMoooommmmmmorRrRrrrYo......",
+            ".oRo.o..oooooooorrrrrrryYo......",
+            ".oRRooooRRrrrrrrrrrrrryYo.......",
+            ".oRrRRRRrrrrrrrrrrrryYYo........",
+            "..oRrrrrrrrrryyyyrrrYoo.........",
+            "...oRrrrddYyyyyyyyyYo...........",
+            "....oRddoooyyYYYYyYo............",
+            ".....ooo..oRdooooRdo............",
+            ".........oRrdo..oRdo............",
+            "..........www...owwo............",
+            "...........o.....oo.............",
+            "................................",
+        } : new String[] {
+            "................................",
+            "................................",
+            "......................o..o......",
+            ".....................owoowo.....",
+            "......................owowwo....",
+            ".......................owowoo...",
+            ".......................oRwekRoo.",
+            ".......................oRrrrrRdo",
+            ".oo...................oRrrrrrrrR",
+            "oddo..................oRrrdddddd",
+            ".oddo................oRrrdowowow",
+            ".oddo..........ooooooRrryYo.....",
+            ".oRoo.....oooooRrRRRRrrrYo......",
+            ".oRoMooooommmmmorrrrrrryYo......",
+            ".oRRoMmmmmmmmmmorrrrrryYo.......",
+            ".oRrRommmmmmmmorrrrryYYo........",
+            "..oRommmmmmmmmoyyrrrYoo.........",
+            "...oMomMmmmmmoryyyyYo...........",
+            "....ooMoMmmmorYYYyYo............",
+            "......omMMmmoroooRdo............",
+            "......oMMMMoro..oRdo............",
+            ".......oooMoo...oRdo............",
+            "..........o......oo.............",
+            "................................",
+        };
+        return pixelArt(rows, "orRdmMDyYekw", 0x3B0A0A, 0xD9482B, 0xF47B4F, 0x9C2A17, 0x8E2318, 0xC7452C,
+                0x5C1410, 0xFCD34D, 0xD9A21B, 0xFDE047, 0x140606, 0xFFF7ED);
     }
 
     /**
      * Builds an image from rows of characters. '.' is transparent; every other character is
      * looked up in {@code keys} to pick a colour. Colours without an alpha byte are opaque.
      */
-    private static BufferedImage pixelArt(String[] rows, String keys, int... colors) {
+    static BufferedImage pixelArt(String[] rows, String keys, int... colors) {
         int width = rows[0].length();
         BufferedImage image = new BufferedImage(width, rows.length, BufferedImage.TYPE_INT_ARGB);
         for (int y = 0; y < rows.length; y++) {
@@ -249,6 +539,13 @@ public final class Assets {
         return image;
     }
 
+    /** Completes a picture that is symmetric left to right from the left half of each row. */
+    static String[] symmetric(String... left) {
+        String[] rows = new String[left.length];
+        for (int i = 0; i < left.length; i++) rows[i] = left[i] + new StringBuilder(left[i]).reverse();
+        return rows;
+    }
+
     private static BufferedImage silhouette(BufferedImage source) {
         BufferedImage white = new BufferedImage(source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_ARGB);
         for (int y = 0; y < source.getHeight(); y++) {
@@ -257,220 +554,6 @@ public final class Assets {
             }
         }
         return white;
-    }
-
-    // ---- towers --------------------------------------------------------------------------
-
-    /** The platform a turret sits on. Its rim shows the tier; its trim shows the tower's parents. */
-    private static BufferedImage towerBase(TowerType type, int tier) {
-        BufferedImage image = new BufferedImage(ART, ART, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = image.createGraphics();
-        fillRound(g, TIER_RIM_DARK[tier - 1], 1, 1, 22, 22, 6);
-        fillRound(g, TIER_RIM[tier - 1], 2, 2, 20, 19, 5);
-        fillRound(g, 0x6E7786, 3, 3, 18, 17, 4);
-        fillRound(g, 0x8891A0, 3, 3, 18, 15, 4);
-        rect(g, 0xA7AFBC, 5, 4, 14, 1);
-        g.setColor(type.color);
-        g.fillRect(4, 19, 8, 2);
-        g.setColor(type.colorB);
-        g.fillRect(12, 19, 8, 2);
-        oval(g, 0x434B58, 6, 6, 12, 12);
-        oval(g, 0x535C6B, 7, 7, 10, 10);
-        if (tier >= 3) {
-            // Studs at the corners for the upper tiers.
-            int stud = tier == 4 ? 0xFFF3B0 : 0xFFFFFF;
-            rect(g, stud, 3, 3, 2, 2);
-            rect(g, stud, 19, 3, 2, 2);
-            rect(g, stud, 3, 16, 2, 2);
-            rect(g, stud, 19, 16, 2, 2);
-        }
-        g.dispose();
-        return image;
-    }
-
-    /** Turret art on a transparent canvas, pointing right, rotating about the centre. */
-    private static BufferedImage turretArt(TowerType type) {
-        BufferedImage image = new BufferedImage(ART, ART, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = image.createGraphics();
-        switch (type) {
-            case ARROW -> {
-                rect(g, 0x5C3A1A, 5, 11, 13, 2);
-                rect(g, 0x9A6A35, 6, 11, 11, 1);
-                rect(g, 0x5C3A1A, 15, 5, 2, 14);
-                rect(g, 0x5C3A1A, 13, 4, 2, 2);
-                rect(g, 0x5C3A1A, 13, 18, 2, 2);
-                g.setColor(new Color(0xE5E7EB));
-                g.drawLine(13, 5, 8, 11);
-                g.drawLine(8, 12, 13, 18);
-                rect(g, 0xD1D5DB, 17, 11, 5, 2);
-                rect(g, 0xFFFFFF, 22, 11, 1, 2);
-            }
-            case CANNON -> cannon(g, 0x1F2937, 0x4B5563, 0x1F2937, 0x7C8696);
-            case FROST -> crystal(g, 0x0369A1, 0x7DD3FC, 0xBAE6FD);
-            case TESLA -> {
-                prongs(g, 0x9CA3AF);
-                coil(g, 0x374151, 0x9CA3AF, 0xFDE047, 0xFFFFFF);
-            }
-            case VENOM -> {
-                oval(g, 0x365314, 4, 6, 13, 12);
-                oval(g, 0x65A30D, 5, 7, 11, 10);
-                rect(g, 0x365314, 13, 9, 8, 6);
-                rect(g, 0x4D7C0F, 13, 10, 7, 4);
-                rect(g, 0xBEF264, 20, 10, 3, 4);
-                rect(g, 0xD9F99D, 7, 9, 3, 2);
-            }
-            case PRISM -> {
-                rays(g, 0xFDE047);
-                crystal(g, 0x9A3412, 0xFB923C, 0xFED7AA);
-                oval(g, 0xFEF3C7, 10, 9, 4, 5);
-            }
-            case FLAK -> {
-                rect(g, 0x1F2937, 12, 7, 10, 3);
-                rect(g, 0x1F2937, 12, 14, 10, 3);
-                rect(g, 0x9CA3AF, 21, 7, 2, 3);
-                rect(g, 0x9CA3AF, 21, 14, 2, 3);
-                oval(g, 0x3F4A22, 5, 5, 13, 14);
-                oval(g, 0x6B7F3A, 6, 6, 11, 12);
-                rect(g, 0xB5803A, 9, 11, 5, 2);
-            }
-            case ICE_LANCE -> {
-                rect(g, 0x0C4A6E, 3, 11, 14, 2);
-                rect(g, 0x38BDF8, 14, 5, 2, 14);
-                rect(g, 0x38BDF8, 12, 4, 2, 2);
-                rect(g, 0x38BDF8, 12, 18, 2, 2);
-                rect(g, 0x7DD3FC, 4, 10, 3, 4);
-                rect(g, 0xE0F2FE, 16, 11, 7, 2);
-            }
-            case RAILGUN -> {
-                oval(g, 0x374151, 3, 7, 10, 10);
-                rect(g, 0x111827, 8, 8, 15, 2);
-                rect(g, 0x111827, 8, 14, 15, 2);
-                rect(g, 0xFDE047, 10, 10, 12, 4);
-                rect(g, 0xFEF9C3, 10, 11, 12, 2);
-                oval(g, 0xB5803A, 5, 9, 6, 6);
-            }
-            case BLIGHT -> {
-                rect(g, 0x3F6212, 5, 11, 12, 2);
-                rect(g, 0x65A30D, 15, 4, 2, 16);
-                rect(g, 0x65A30D, 13, 3, 2, 2);
-                rect(g, 0x65A30D, 13, 19, 2, 2);
-                rect(g, 0xD9F99D, 17, 6, 5, 1);
-                rect(g, 0xD9F99D, 17, 11, 6, 2);
-                rect(g, 0xD9F99D, 17, 17, 5, 1);
-            }
-            case SUNBOW -> {
-                rect(g, 0x78350F, 4, 10, 14, 4);
-                rect(g, 0xB45309, 5, 11, 12, 2);
-                rect(g, 0xF59E0B, 15, 4, 3, 16);
-                rect(g, 0xF59E0B, 13, 3, 3, 2);
-                rect(g, 0xF59E0B, 13, 19, 3, 2);
-                rect(g, 0xFEF3C7, 18, 11, 5, 2);
-                rect(g, 0xFB923C, 7, 10, 4, 4);
-                rect(g, 0xFFFFFF, 8, 11, 2, 2);
-            }
-            case BLIZZARD -> cannon(g, 0x0C4A6E, 0x38BDF8, 0xE0F2FE, 0xBAE6FD);
-            case PLASMA -> {
-                oval(g, 0x3B0764, 5, 6, 12, 12);
-                oval(g, 0x7E22CE, 6, 7, 10, 10);
-                rect(g, 0x3B0764, 11, 8, 9, 8);
-                rect(g, 0x9333EA, 11, 9, 8, 6);
-                oval(g, 0xF0ABFC, 17, 8, 6, 8);
-                rect(g, 0xFFFFFF, 19, 11, 2, 2);
-            }
-            case ACID -> cannon(g, 0x1A2E05, 0x4D7C0F, 0xD9F99D, 0x84CC16);
-            case CLUSTER -> {
-                oval(g, 0x1F2937, 4, 6, 12, 12);
-                oval(g, 0x4B5563, 5, 7, 10, 10);
-                rect(g, 0x1F2937, 11, 6, 11, 12);
-                rect(g, 0x374151, 11, 7, 10, 10);
-                rect(g, 0xFB923C, 18, 8, 3, 3);
-                rect(g, 0xFB923C, 18, 13, 3, 3);
-                rect(g, 0x9A3412, 13, 8, 3, 3);
-                rect(g, 0x9A3412, 13, 13, 3, 3);
-            }
-            case STORM -> {
-                rect(g, 0xFDE047, 3, 3, 2, 2);
-                rect(g, 0xFDE047, 19, 3, 2, 2);
-                rect(g, 0xFDE047, 3, 19, 2, 2);
-                rect(g, 0xFDE047, 19, 19, 2, 2);
-                crystal(g, 0x155E75, 0x67E8F9, 0xA5F3FC);
-                oval(g, 0xFDE047, 9, 8, 6, 6);
-                rect(g, 0xFFFFFF, 11, 10, 2, 2);
-            }
-            case MIASMA -> {
-                crystal(g, 0x1A2E05, 0x65A30D, 0xA3E635);
-                oval(g, 0x7DD3FC, 9, 9, 6, 5);
-                rect(g, 0xFFFFFF, 11, 10, 2, 2);
-            }
-            case AURORA -> {
-                rays(g, 0xBAE6FD);
-                crystal(g, 0x0369A1, 0x7DD3FC, 0xE0F2FE);
-                oval(g, 0xFB923C, 9, 8, 6, 6);
-                rect(g, 0xFFFFFF, 11, 10, 2, 2);
-            }
-            case PLAGUE -> {
-                prongs(g, 0x84CC16);
-                coil(g, 0x1A2E05, 0x65A30D, 0xFDE047, 0xD9F99D);
-            }
-            case ARC -> {
-                rect(g, 0xFDE047, 11, 1, 2, 5);
-                rect(g, 0xFDE047, 2, 16, 5, 2);
-                rect(g, 0xFDE047, 17, 16, 5, 2);
-                coil(g, 0x374151, 0xFACC15, 0xFB923C, 0xFFFFFF);
-            }
-            case SIPHON -> {
-                crystal(g, 0x3F6212, 0x84CC16, 0xD9F99D);
-                g.setColor(new Color(0x0C4A6E));
-                g.fillPolygon(new int[] {12, 16, 12, 8}, new int[] {6, 11, 17, 11}, 4);
-                g.setColor(new Color(0x38BDF8));
-                g.fillPolygon(new int[] {12, 15, 12, 9}, new int[] {7, 11, 16, 11}, 4);
-                rect(g, 0xFFFFFF, 11, 9, 1, 3);
-            }
-        }
-        g.dispose();
-        return image;
-    }
-
-    private static void cannon(Graphics2D g, int dark, int mid, int muzzle, int shine) {
-        oval(g, dark, 5, 6, 12, 12);
-        oval(g, mid, 6, 7, 10, 10);
-        rect(g, dark, 11, 9, 11, 6);
-        rect(g, mid, 11, 10, 10, 4);
-        rect(g, muzzle, 20, 8, 3, 8);
-        rect(g, shine, 12, 10, 7, 1);
-    }
-
-    private static void crystal(Graphics2D g, int outline, int dark, int light) {
-        g.setColor(new Color(outline));
-        g.fillPolygon(new int[] {12, 19, 12, 5}, new int[] {1, 11, 22, 11}, 4);
-        g.setColor(new Color(dark));
-        g.fillPolygon(new int[] {12, 17, 12, 7}, new int[] {3, 11, 20, 11}, 4);
-        g.setColor(new Color(light));
-        g.fillPolygon(new int[] {12, 12, 7}, new int[] {3, 20, 11}, 3);
-        rect(g, 0xFFFFFF, 10, 8, 1, 4);
-    }
-
-    private static void coil(Graphics2D g, int ring, int body, int core, int spark) {
-        oval(g, ring, 5, 5, 14, 14);
-        oval(g, body, 7, 7, 10, 10);
-        oval(g, core, 9, 9, 6, 6);
-        rect(g, spark, 11, 11, 2, 2);
-    }
-
-    private static void prongs(Graphics2D g, int rgb) {
-        rect(g, rgb, 11, 2, 2, 4);
-        rect(g, rgb, 11, 18, 2, 4);
-        rect(g, rgb, 2, 11, 4, 2);
-        rect(g, rgb, 18, 11, 4, 2);
-    }
-
-    private static void rays(Graphics2D g, int rgb) {
-        rect(g, rgb, 4, 4, 2, 2);
-        rect(g, rgb, 18, 4, 2, 2);
-        rect(g, rgb, 4, 18, 2, 2);
-        rect(g, rgb, 18, 18, 2, 2);
-        rect(g, rgb, 2, 11, 2, 1);
-        rect(g, rgb, 20, 11, 2, 1);
     }
 
     // ---- terrain -------------------------------------------------------------------------
@@ -676,17 +759,17 @@ public final class Assets {
 
     // ---- helpers -------------------------------------------------------------------------
 
-    private static void rect(Graphics2D g, int rgb, int x, int y, int w, int h) {
+    static void rect(Graphics2D g, int rgb, int x, int y, int w, int h) {
         g.setColor(new Color(rgb));
         g.fillRect(x, y, w, h);
     }
 
-    private static void oval(Graphics2D g, int rgb, int x, int y, int w, int h) {
+    static void oval(Graphics2D g, int rgb, int x, int y, int w, int h) {
         g.setColor(new Color(rgb));
         g.fillOval(x, y, w, h);
     }
 
-    private static void fillRound(Graphics2D g, int rgb, int x, int y, int w, int h, int arc) {
+    static void fillRound(Graphics2D g, int rgb, int x, int y, int w, int h, int arc) {
         g.setColor(new Color(rgb));
         g.fillRoundRect(x, y, w, h, arc, arc);
     }

@@ -8,7 +8,7 @@ import ecs.World;
 import game.DamageType;
 import game.Game;
 
-/** Ticks debuff timers and applies burn and poison damage. */
+/** Ticks the timers of every lingering effect and applies burn and poison damage. */
 public final class StatusSystem implements GameSystem {
     private final Game game;
     private final Query query;
@@ -27,9 +27,16 @@ public final class StatusSystem implements GameSystem {
             int e = query.get(i);
             Status s = statuses.get(e);
             if (s.slowTime > 0 && (s.slowTime -= dt) <= 0) s.slow = 0;
+            if (s.hasteTime > 0 && (s.hasteTime -= dt) <= 0) s.haste = 0;
             if (s.stunTime > 0) s.stunTime -= dt;
             if (s.shredTime > 0) s.shredTime -= dt;
+            if (s.hexTime > 0) s.hexTime -= dt;
+            if (s.rotTime > 0) s.rotTime -= dt;
+            if (s.fearTime > 0) s.fearTime -= dt;
+            if (s.fearGuard > 0) s.fearGuard -= dt;
+            if (s.mendGuard > 0) s.mendGuard -= dt;
             if (s.brittleTime > 0 && (s.brittleTime -= dt) <= 0) s.brittle = 0;
+            if (s.doomTime > 0 && (s.doomTime -= dt) <= 0) s.doom = 0;
             if (s.burnTime > 0) {
                 game.combat.source = s.burnOwner;
                 game.combat.damage(e, s.burnDps * dt, DamageType.MAGIC);

@@ -24,8 +24,11 @@ public final class TowerSystem implements GameSystem {
     private static final float SLOW_SECONDS = 1.5f;
     private static final float BRITTLE_SECONDS = 3;
     private static final float BEAM_SLOW_SECONDS = 0.4f;
+    private static final float BOSS_EXECUTE_FACTOR = 0.25f;
     /** Added to a candidate's score to push it behind every candidate without the penalty. */
     private static final float LOW_PRIORITY = 100_000;
+    /** Where an Arc Prism's three lenses sit relative to the tile centre, one per beam. */
+    private static final float[] ARC_LENS_X = {0, -16, 16}, ARC_LENS_LIFT = {19, 9, 9};
 
     private static final Color FROST_RING = new Color(0x7DD3FC);
     private static final Color MIASMA_RING = new Color(0xA3E635);
@@ -36,6 +39,8 @@ public final class TowerSystem implements GameSystem {
     private static final Color SUN_BEAM = new Color(0xFDBA74);
     private static final Color AURORA_BEAM = new Color(0x7DD3FC);
     private static final Color SIPHON_BEAM = new Color(0xA3E635);
+    private static final Color HEX_VIOLET = new Color(0xC084FC), DREAD_RING = new Color(0xA855F7);
+    private static final Color REAPED = new Color(0xE9D5FF);
 
     private final Game game;
     private final SpatialGrid grid;
@@ -80,7 +85,9 @@ public final class TowerSystem implements GameSystem {
             if (!keep) {
                 int previous = t.target;
                 t.target = acquire(t, p, range, 0);
-                if (beam && t.target != previous) t.ramp = 0;
+                // A beam starts cold on a new target, except a Soul Prism whose last one died.
+                boolean keepsHeat = t.type == TowerType.SOUL && previous != World.NONE && !living(previous);
+                if (beam && t.target != previous && !keepsHeat) t.ramp = 0;
             }
             Position tp = positions.get(t.target);
             if (tp == null) {
@@ -97,6 +104,11 @@ public final class TowerSystem implements GameSystem {
                 t.recoil = 1;
             }
         }
+    }
+
+    private boolean living(int enemy) {
+        Health h = healths.get(enemy);
+        return h != null && h.hp > 0;
     }
 
     private boolean valid(int target, Position p, float range) {
@@ -116,6 +128,8 @@ public final class TowerSystem implements GameSystem {
         float bestScore = Float.MAX_VALUE;
         boolean spreadsBrittle = t.type == TowerType.STORM;
         boolean spreadsPoison = t.type.poisonDps(1) > 0;
+        boolean spreadsHex = t.type == TowerType.HEX;
+        boolean huntsCasters = t.type == TowerType.HEX || t.type == TowerType.HUNTER;
         int n = grid.query(p.x, p.y, range);
         search:
         for (int k = 0; k < n; k++) {
@@ -129,6 +143,9 @@ public final class TowerSystem implements GameSystem {
             Status status = statuses.get(e);
             if (spreadsBrittle && status.brittleTime > 0.5f) score += LOW_PRIORITY;
             if (spreadsPoison && status.poisonTime > 1) score += LOW_PRIORITY;
+            if (spreadsHex && status.hexTime > 1) score += LOW_PRIORITY;
+            // Healers, drummers and summoners come first for the towers built to stop them.
+            if (huntsCasters && enemies.get(e).type.caster()) score -= LOW_PRIORITY / 2;
             if (score < bestScore) {
                 bestScore = score;
                 best = e;
@@ -161,7 +178,11 @@ public final class TowerSystem implements GameSystem {
     }
 
     private void bolts(Tower t, Position p, float range) {
-        float mx = p.x + (float) Math.cos(t.angle) * 18, my = p.y + (float) Math.sin(t.angle) * 18;
+        float mx = p.x, my = p.y - t.type.emitterLift();
+        if (t.type.rotates) {
+            mx = p.x + (float) Math.cos(t.angle) * 18;
+            my = p.y + (float) Math.sin(t.angle) * 18;
+        }
         int count = pickTargets(t, p, range);
         for (int k = 0; k < count; k++) {
             Position tp = positions.get(picked[k]);
@@ -174,7 +195,7 @@ public final class TowerSystem implements GameSystem {
         float tx = tp.x, ty = tp.y;
         PathFollower f = followers.get(t.target);
         Status s = statuses.get(t.target);
-        if (f.next < f.xs.length && s.stunTime <= 0) {
+        if (f.next < f.xs.length && s.stunTime <= 0 && s.fearTime <= 0) {
             float flight = (float) Math.hypot(tx - p.x, ty - p.y) / t.type.projectileSpeed;
             float dx = f.xs[f.next] + f.laneX - tx, dy = f.ys[f.next] + f.laneY - ty;
             float dist = (float) Math.sqrt(dx * dx + dy * dy);
@@ -188,24 +209,40 @@ public final class TowerSystem implements GameSystem {
     }
 
     private void pulse(Tower t, Position p, float range) {
-        boolean toxic = t.type == TowerType.MIASMA;
-        float damage = t.type.damage(t.tier), slow = t.type.slow(t.tier);
+        TowerType type = t.type;
+        float damage = type.damage(t.tier), slow = type.slow(t.tier);
         int n = grid.query(p.x, p.y, range);
         for (int k = 0; k < n; k++) {
             int e = grid.result(k);
-            game.combat.damage(e, damage, t.type.damageType);
-            game.combat.slow(e, slow, SLOW_SECONDS);
-            if (toxic) game.combat.poison(e, t.type.poisonDps(t.tier), t.type.poisonSeconds(), false);
+            game.combat.damage(e, damage, type.damageType);
+            switch (type) {
+                case MIASMA -> {
+                    game.combat.slow(e, slow, SLOW_SECONDS);
+                    game.combat.poison(e, type.poisonDps(t.tier), type.poisonSeconds(), false);
+                }
+                case DREAD -> {
+                    // Hexed first, so even a Wraith loses its nerve.
+                    game.combat.hex(e, type.hexSeconds(t.tier));
+                    game.combat.fear(e, type.fear(t.tier));
+                }
+                default -> game.combat.slow(e, slow, SLOW_SECONDS);
+            }
         }
-        game.prefabs.ring(p.x, p.y, range, toxic ? MIASMA_RING : FROST_RING, 0.35f);
+        Color ring = type == TowerType.MIASMA ? MIASMA_RING : type == TowerType.DREAD ? DREAD_RING : FROST_RING;
+        game.prefabs.ring(p.x, p.y, range, ring, 0.35f);
     }
 
     private void chain(Tower t, Position p) {
         TowerType type = t.type;
-        Color color = type == TowerType.STORM ? STORM_BOLT : type == TowerType.PLAGUE ? PLAGUE_BOLT : TESLA_BOLT;
+        Color color = switch (type) {
+            case STORM -> STORM_BOLT;
+            case PLAGUE -> PLAGUE_BOLT;
+            case REAPER -> HEX_VIOLET;
+            default -> TESLA_BOLT;
+        };
         float damage = type.damage(t.tier);
         int max = Math.min(type.chains(t.tier), picked.length);
-        float fromX = p.x, fromY = p.y - 6;
+        float fromX = p.x, fromY = p.y - type.emitterLift();
         int current = t.target;
         int hits = 0;
         while (current != World.NONE && hits < max) {
@@ -218,6 +255,10 @@ public final class TowerSystem implements GameSystem {
                     game.combat.slow(current, type.slow(t.tier), 1);
                 }
                 case PLAGUE -> game.combat.poison(current, type.poisonDps(t.tier), type.poisonSeconds(), true);
+                case REAPER -> {
+                    game.combat.hex(current, type.hexSeconds(t.tier));
+                    reap(current, type.execute(t.tier), cp);
+                }
                 default -> damage *= TESLA_DECAY;
             }
             picked[hits++] = current;
@@ -225,6 +266,23 @@ public final class TowerSystem implements GameSystem {
             fromY = cp.y;
             current = nearestUnhit(fromX, fromY, hits);
         }
+    }
+
+    /** Finishes off a monster left below {@code share} of its health; bosses need to be far lower. */
+    private void reap(int e, float share, Position at) {
+        Health h = healths.get(e);
+        if (enemies.get(e).type.boss()) share *= BOSS_EXECUTE_FACTOR;
+        if (h.hp <= 0 || h.hp > h.max * share) return;
+        // The rest of its health goes at once; no ward or armor softens the blow.
+        float left = h.hp;
+        h.hp = 0;
+        game.combat.totalDamage += left;
+        Tower tower = towers.get(game.combat.source);
+        if (tower != null) {
+            tower.damageDealt += left;
+            h.lastHitBy = game.combat.source;
+        }
+        game.prefabs.flash(at.x, at.y, 14, REAPED, 0.25f);
     }
 
     private int nearestUnhit(float x, float y, int hits) {
@@ -281,6 +339,7 @@ public final class TowerSystem implements GameSystem {
             case AURORA -> AURORA_BEAM;
             case ARC -> TESLA_BOLT;
             case SIPHON -> SIPHON_BEAM;
+            case SOUL -> HEX_VIOLET;
             default -> SUN_BEAM;
         };
         int count = pickTargets(t, p, range);
@@ -288,7 +347,11 @@ public final class TowerSystem implements GameSystem {
             Position tp = positions.get(picked[k]);
             game.combat.damage(picked[k], damage, type.damageType);
             if (type == TowerType.AURORA) game.combat.slow(picked[k], type.slow(t.tier), BEAM_SLOW_SECONDS);
-            game.prefabs.beam(p.x, p.y - 4, tp.x, tp.y, color, 2 + t.ramp * 3, type.cooldown + 0.04f);
+            if (type == TowerType.SOUL) game.combat.hex(picked[k], type.hexSeconds(t.tier));
+            boolean arc = type == TowerType.ARC;
+            float fromX = arc ? p.x + ARC_LENS_X[k] : p.x;
+            float fromY = p.y - (arc ? ARC_LENS_LIFT[k] : type.emitterLift());
+            game.prefabs.beam(fromX, fromY, tp.x, tp.y, color, 2 + t.ramp * 3, type.cooldown + 0.04f);
         }
         float cap = game.manaCap();
         if (type == TowerType.SIPHON && game.mana < cap) {

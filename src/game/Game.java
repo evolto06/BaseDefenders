@@ -19,9 +19,11 @@ import systems.InputSystem;
 import systems.MenuSystem;
 import systems.MovementSystem;
 import systems.ProjectileSystem;
+import systems.RallySystem;
 import systems.RenderSystem;
 import systems.SpatialSystem;
 import systems.StatusSystem;
+import systems.SummonSystem;
 import systems.TutorialSystem;
 import systems.TowerSystem;
 import systems.WaveSystem;
@@ -126,6 +128,8 @@ public final class Game {
             new StatusSystem(this),
             new MovementSystem(this),
             new HealerSystem(this),
+            new RallySystem(this),
+            new SummonSystem(this),
             new SpatialSystem(this),
             new TowerSystem(this),
             new ProjectileSystem(this),

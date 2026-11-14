@@ -38,8 +38,10 @@ import java.awt.GradientPaint;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.Shape;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Draws the in-match interface: status bar on top, and along the bottom the next-wave preview,
@@ -53,10 +55,24 @@ public final class HudSystem {
     private static final Color WIPE = new Color(8, 10, 16, 185);
     private static final int TOOLTIP_W = 236, TOOLTIP_H = 178;
     private static final int MANA_SEGMENTS = 10;
+    /** Rows of field above the bottom bar that a raised card reaches into. */
+    private static final int LIP = 16;
+    /** The bars are repainted at least once in this many frames. */
+    private static final int REFRESH_FRAMES = 4;
+    private static final int BADGE_W = 30, BADGE_H = 26;
+    private static final AffineTransform DEVICE = new AffineTransform();
+    private static final Rectangle[] BUTTONS = {
+        Layout.NEXT, Layout.SPEED, Layout.PAUSE, Layout.CHART, Layout.MENU, Layout.HELP
+    };
 
     private final Game game;
     private final Store<Tower> towers;
     private final Query towerQuery;
+    private BufferedImage topBar, bottomBar, bottomLip, bottomBody, towerCard;
+    /** Per card: its face, plain and picked, and its cost badge, unaffordable and affordable. */
+    private BufferedImage[] cardFaces, cardBadges;
+    private double barScale;
+    private int barState, barAge;
 
     public HudSystem(Game game) {
         this.game = game;
@@ -65,21 +81,147 @@ public final class HudSystem {
     }
 
     public void render(Graphics2D g) {
-        drawStatusBar(g);
-        g.setPaint(new GradientPaint(0, Layout.BAR_Y, Ui.BAR_TOP, 0, Layout.HEIGHT, Ui.BAR_BOTTOM));
-        g.fillRect(0, Layout.BAR_Y, Layout.WIDTH, Layout.BAR_H);
-        g.setColor(BORDER);
-        g.fillRect(0, Layout.BAR_Y, Layout.WIDTH, 2);
-        drawPreview(g);
-        drawMana(g);
-        drawHand(g);
-        drawControls(g);
+        drawBars(g);
+        drawTips(g);
         drawTowerCard(g);
         drawHint(g);
         if (game.paused || game.gameOver) drawMenu(g);
         if (game.victoryScreen) drawVictory(g);
         if (game.showChart) drawChart(g);
         if (game.showHelp) Ui.drawHelp(g);
+    }
+
+    // ---- the bars ------------------------------------------------------------------------
+
+    /**
+     * The status bar and the bottom bar change little from frame to frame but are slow to paint
+     * (gradients, rounded shapes, text), so they are painted into pictures at the screen's own
+     * resolution and those are copied to the screen. They are repainted a few times a second
+     * for the ticking numbers, and at once when the pointer moves onto or off something. The
+     * selected tower's card is kept the same way.
+     */
+    private void drawBars(Graphics2D g) {
+        AffineTransform at = g.getTransform();
+        double scale = at.getScaleX();
+        int state = barState();
+        boolean animating = game.wave == 0 || game.manaFlash > 0;
+        if (topBar == null || scale != barScale || state != barState || animating || ++barAge >= REFRESH_FRAMES) {
+            if (topBar == null || scale != barScale) allocateBars(scale);
+            barState = state;
+            barAge = 0;
+            paintBars(g);
+        }
+        Graphics2D device = (Graphics2D) g.create();
+        device.setTransform(DEVICE);
+        int x = (int) Math.round(at.getTranslateX()), y = (int) Math.round(at.getTranslateY());
+        device.drawImage(topBar, x, y, null);
+        int lipTop = y + (int) Math.round((Layout.BAR_Y - LIP) * scale);
+        device.drawImage(bottomLip, x, lipTop, null);
+        device.drawImage(bottomBody, x, lipTop + bottomLip.getHeight(), null);
+        device.dispose();
+    }
+
+    private void allocateBars(double scale) {
+        barScale = scale;
+        cardFaces = new BufferedImage[Layout.CARDS.length * 2];
+        cardBadges = new BufferedImage[Layout.CARDS.length * 2];
+        int width = (int) Math.ceil(Layout.WIDTH * scale);
+        int lipRows = (int) Math.ceil(LIP * scale);
+        topBar = new BufferedImage(width, (int) Math.ceil(Layout.TOP * scale), BufferedImage.TYPE_INT_RGB);
+        bottomBar = new BufferedImage(width, (int) Math.ceil((Layout.BAR_H + LIP) * scale), BufferedImage.TYPE_INT_ARGB);
+        // Only the lip, where a raised card overlaps the field, needs to be see-through; the
+        // rest is kept as an opaque copy, which is far cheaper to put on the screen.
+        bottomLip = bottomBar.getSubimage(0, 0, width, lipRows);
+        bottomBody = new BufferedImage(width, bottomBar.getHeight() - lipRows, BufferedImage.TYPE_INT_RGB);
+        towerCard = new BufferedImage((int) Math.ceil(Layout.TOWER_CARD_W * scale),
+                (int) Math.ceil(Layout.TOWER_CARD_H * scale), BufferedImage.TYPE_INT_ARGB);
+    }
+
+    private void paintBars(Graphics2D screen) {
+        Graphics2D g = strip(topBar, screen, 0);
+        g.setColor(BORDER);
+        g.fillRect(0, 0, Layout.WIDTH, Layout.TOP + 1);
+        drawStatusBar(g);
+        g.dispose();
+
+        g = bottomBar.createGraphics();
+        g.setComposite(AlphaComposite.Clear);
+        g.fillRect(0, 0, bottomBar.getWidth(), bottomBar.getHeight());
+        g.dispose();
+        g = strip(bottomBar, screen, Layout.BAR_Y - LIP);
+        g.setPaint(new GradientPaint(0, Layout.BAR_Y, Ui.BAR_TOP, 0, Layout.HEIGHT, Ui.BAR_BOTTOM));
+        g.fillRect(0, Layout.BAR_Y, Layout.WIDTH, Layout.BAR_H + 1);
+        // The border starts one row above the bar, so no seam can show where it meets the field.
+        g.setColor(BORDER);
+        g.fillRect(0, Layout.BAR_Y - 1, Layout.WIDTH, 3);
+        drawPreview(g);
+        drawMana(g);
+        drawHand(g);
+        drawControls(g);
+        g.dispose();
+
+        g = bottomBody.createGraphics();
+        g.drawImage(bottomBar, 0, -bottomLip.getHeight(), null);
+        g.dispose();
+        paintTowerCard(screen);
+    }
+
+    /** Graphics that paint into a bar's picture exactly as the screen would have painted it. */
+    private Graphics2D strip(BufferedImage image, Graphics2D screen, int top) {
+        Graphics2D g = image.createGraphics();
+        g.setRenderingHints(screen.getRenderingHints());
+        g.scale(barScale, barScale);
+        g.translate(0, -top);
+        return g;
+    }
+
+    /** What the pointer is on, and the facts that change how the bars look at a glance. */
+    private int barState() {
+        int over = -1;
+        for (int i = 0; i < Layout.CARDS.length; i++) {
+            if (Layout.CARDS[i].contains(game.mouseX, game.mouseY)) over = i;
+        }
+        for (int i = 0; i < BUTTONS.length; i++) {
+            if (BUTTONS[i].contains(game.mouseX, game.mouseY)) over = 20 + i;
+        }
+        int slot = Layout.previewSlotAt(game.mouseX, game.mouseY, game.nextPlan.counts.size());
+        if (slot >= 0) over = 40 + slot;
+        Tower selected = shownTower();
+        if (selected != null) {
+            Rectangle card = Layout.towerCard(selected.col);
+            if (Layout.upgradeButton(card).contains(game.mouseX, game.mouseY)) over = 60;
+            if (Layout.sellButton(card).contains(game.mouseX, game.mouseY)) over = 61;
+        }
+        int state = over;
+        state = state * 31 + (selected == null ? -1 : game.selected);
+        state = state * 31 + (game.placing == null ? -1 : game.placing.ordinal());
+        state = state * 31 + game.wave;
+        state = state * 31 + game.lives;
+        state = state * 31 + game.speed;
+        state = state * 31 + game.map.ordinal();
+        state = state * 31 + (game.cardDrag ? 1 : 0) + (game.spawning() ? 2 : 0) + (game.gameOver ? 4 : 0);
+        return state;
+    }
+
+    /** Details of the card or the upcoming monster under the pointer, floating over the field. */
+    private void drawTips(Graphics2D g) {
+        if (!game.cardDrag) {
+            for (int i = 0; i < Layout.CARDS.length; i++) {
+                Rectangle r = Layout.CARDS[i];
+                if (!r.contains(game.mouseX, game.mouseY)) continue;
+                int x = Math.clamp(r.x + r.width / 2 - TOOLTIP_W / 2, 6, Layout.WIDTH - TOOLTIP_W - 6);
+                Rectangle tip = new Rectangle(x, Layout.BAR_Y - TOOLTIP_H - 12, TOOLTIP_W, TOOLTIP_H);
+                Ui.card(g, tip);
+                drawCard(g, tip, TowerType.BASES[i], 1, null);
+            }
+        }
+        WavePlan plan = game.nextPlan;
+        int hovered = Layout.previewSlotAt(game.mouseX, game.mouseY, plan.counts.size());
+        if (hovered < 0) return;
+        int slot = 0;
+        for (EnemyType type : plan.counts.keySet()) {
+            if (slot++ == hovered) drawEnemyTip(g, type, plan);
+        }
     }
 
     // ---- status bar --------------------------------------------------------------------
@@ -155,8 +297,6 @@ public final class HudSystem {
     // ---- the hand ----------------------------------------------------------------------
 
     private void drawHand(Graphics2D g) {
-        TowerType inspected = null;
-        Rectangle inspectedCard = null;
         for (int i = 0; i < Layout.CARDS.length; i++) {
             Rectangle r = Layout.CARDS[i];
             TowerType type = TowerType.BASES[i];
@@ -167,22 +307,12 @@ public final class HudSystem {
             int y = r.y - (active ? 14 : hover ? 5 : 0);
             int w = r.width, h = r.height;
 
-            g.setColor(CARD_SHADOW);
-            g.fillRoundRect(r.x + 2, y + 5, w, h, 16, 16);
-            g.setColor(active ? GOLD : CARD_FRAME);
-            g.fillRoundRect(r.x, y, w, h, 16, 16);
-            g.setPaint(new GradientPaint(0, y, Ui.blend(type.color, CARD_FACE_TOP, 0.6f), 0, y + h,
-                    Ui.blend(type.color, CARD_FACE_BOTTOM, 0.85f)));
-            g.fillRoundRect(r.x + 3, y + 3, w - 6, h - 6, 12, 12);
-            g.setColor(SHINE);
-            g.fillRoundRect(r.x + 6, y + 5, w - 12, 3, 3, 3);
-
-            g.drawImage(game.assets.icon(type, 1), r.x + (w - 48) / 2, y + 7, null);
-            g.setFont(TINY_BOLD);
-            g.setColor(MUTED);
-            g.drawString(String.valueOf(i + 1), r.x + 8, y + 18);
-            g.setColor(TEXT);
-            g.drawString(type.label, r.x + (w - g.getFontMetrics().stringWidth(type.label)) / 2, y + 67);
+            // A card's face and its cost badge never change, so each is painted once and stamped.
+            int face = i * 2 + (active ? 1 : 0), number = i + 1;
+            if (cardFaces[face] == null) {
+                cardFaces[face] = picture(g, w + 2, h + 5, p -> paintCardFace(p, type, number, w, h, active));
+            }
+            stamp(g, cardFaces[face], r.x, y);
 
             if (!affordable) {
                 // A dark wipe drains away as mana approaches the price.
@@ -193,31 +323,66 @@ public final class HudSystem {
                 g.setClip(savedClip);
             }
 
-            // Cost badge.
-            int cx = r.x + w / 2, cy = y + h - 15;
-            g.setColor(CARD_FRAME);
-            g.fillOval(cx - 15, cy - 13, 30, 26);
-            g.setPaint(new GradientPaint(0, cy - 11, MANA_LIGHT, 0, cy + 11, affordable ? MANA : MANA_DARK));
-            g.fillOval(cx - 13, cy - 11, 26, 22);
-            g.setFont(BODY);
-            String cost = String.valueOf(type.cost);
-            int costX = cx - g.getFontMetrics().stringWidth(cost) / 2;
-            g.setColor(Color.BLACK);
-            g.drawString(cost, costX + 1, cy + 6);
-            g.setColor(affordable ? Color.WHITE : BAD);
-            g.drawString(cost, costX, cy + 5);
-
-            if (hover && !game.cardDrag) {
-                inspected = type;
-                inspectedCard = r;
+            int badge = i * 2 + (affordable ? 1 : 0);
+            if (cardBadges[badge] == null) {
+                cardBadges[badge] = picture(g, BADGE_W, BADGE_H, p -> paintCostBadge(p, type.cost, affordable));
             }
+            stamp(g, cardBadges[badge], r.x + (w - BADGE_W) / 2, y + h - 15 - BADGE_H / 2);
         }
-        if (inspected != null) {
-            int x = Math.clamp(inspectedCard.x + inspectedCard.width / 2 - TOOLTIP_W / 2, 6, Layout.WIDTH - TOOLTIP_W - 6);
-            Rectangle tip = new Rectangle(x, Layout.BAR_Y - TOOLTIP_H - 12, TOOLTIP_W, TOOLTIP_H);
-            Ui.card(g, tip);
-            drawCard(g, tip, inspected, 1, null);
-        }
+    }
+
+    private void paintCardFace(Graphics2D g, TowerType type, int number, int w, int h, boolean active) {
+        g.setColor(CARD_SHADOW);
+        g.fillRoundRect(2, 5, w, h, 16, 16);
+        g.setColor(active ? GOLD : CARD_FRAME);
+        g.fillRoundRect(0, 0, w, h, 16, 16);
+        g.setPaint(new GradientPaint(0, 0, Ui.blend(type.color, CARD_FACE_TOP, 0.6f), 0, h,
+                Ui.blend(type.color, CARD_FACE_BOTTOM, 0.85f)));
+        g.fillRoundRect(3, 3, w - 6, h - 6, 12, 12);
+        g.setColor(SHINE);
+        g.fillRoundRect(6, 5, w - 12, 3, 3, 3);
+        g.drawImage(game.assets.icon(type, 1), (w - 48) / 2, 7, null);
+        g.setFont(TINY_BOLD);
+        g.setColor(MUTED);
+        g.drawString(String.valueOf(number), 8, 18);
+        g.setColor(TEXT);
+        g.drawString(type.label, (w - g.getFontMetrics().stringWidth(type.label)) / 2, 67);
+    }
+
+    private static void paintCostBadge(Graphics2D g, int price, boolean affordable) {
+        int cx = BADGE_W / 2, cy = BADGE_H / 2;
+        g.setColor(CARD_FRAME);
+        g.fillOval(0, 0, BADGE_W, BADGE_H);
+        g.setPaint(new GradientPaint(0, 2, MANA_LIGHT, 0, BADGE_H - 2, affordable ? MANA : MANA_DARK));
+        g.fillOval(2, 2, BADGE_W - 4, BADGE_H - 4);
+        g.setFont(BODY);
+        String cost = String.valueOf(price);
+        int costX = cx - g.getFontMetrics().stringWidth(cost) / 2;
+        g.setColor(Color.BLACK);
+        g.drawString(cost, costX + 1, cy + 6);
+        g.setColor(affordable ? Color.WHITE : BAD);
+        g.drawString(cost, costX, cy + 5);
+    }
+
+    /** Paints a {@code w} by {@code h} picture at the bars' resolution, with the look of {@code like}. */
+    private BufferedImage picture(Graphics2D like, int w, int h, Consumer<Graphics2D> painter) {
+        BufferedImage image = new BufferedImage((int) Math.ceil(w * barScale), (int) Math.ceil(h * barScale),
+                BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = image.createGraphics();
+        g.setRenderingHints(like.getRenderingHints());
+        g.scale(barScale, barScale);
+        painter.accept(g);
+        g.dispose();
+        return image;
+    }
+
+    /** Copies a {@link #picture} to where (x, y) falls on the screen, pixel for pixel. */
+    private static void stamp(Graphics2D g, BufferedImage image, int x, int y) {
+        AffineTransform at = g.getTransform();
+        g.setTransform(DEVICE);
+        g.drawImage(image, (int) Math.round(at.getTranslateX() + x * at.getScaleX()),
+                (int) Math.round(at.getTranslateY() + y * at.getScaleY()), null);
+        g.setTransform(at);
     }
 
     /** The mana bar under the hand: the regenerating resource every card is paid with. */
@@ -276,11 +441,33 @@ public final class HudSystem {
 
     /** The selected tower's card, floating over the corner of the field away from the tower. */
     private void drawTowerCard(Graphics2D g) {
-        Tower selected = towers.get(game.selected);
-        if (selected == null || game.placing != null || game.gameOver) return;
+        Tower selected = shownTower();
+        if (selected == null) return;
         Rectangle r = Layout.towerCard(selected.col);
+        stamp(g, towerCard, r.x, r.y);
+    }
+
+    /** The tower whose card is open, or null. */
+    private Tower shownTower() {
+        Tower selected = towers.get(game.selected);
+        return game.placing != null || game.gameOver ? null : selected;
+    }
+
+    /** Repaints the open tower card's picture; it is refreshed along with the bars. */
+    private void paintTowerCard(Graphics2D screen) {
+        Tower selected = shownTower();
+        if (selected == null) return;
+        Rectangle r = Layout.towerCard(selected.col);
+        Graphics2D g = towerCard.createGraphics();
+        g.setComposite(AlphaComposite.Clear);
+        g.fillRect(0, 0, towerCard.getWidth(), towerCard.getHeight());
+        g.setComposite(AlphaComposite.SrcOver);
+        g.setRenderingHints(screen.getRenderingHints());
+        g.scale(barScale, barScale);
+        g.translate(-r.x, -r.y);
         Ui.card(g, r);
         drawCard(g, r, selected.type, selected.tier, selected);
+        g.dispose();
     }
 
     /** Tower details. {@code tower} is the placed tower being inspected, or null for a catalogue entry. */
@@ -362,37 +549,38 @@ public final class HudSystem {
         g.setFont(TINY_BOLD);
         g.setColor(MUTED);
         g.drawString("NEXT: WAVE " + plan.wave, r.x + 12, r.y + 19);
-        int hoveredSlot = Layout.previewSlotAt(game.mouseX, game.mouseY);
-        EnemyType inspected = null;
+        int slotWidth = Layout.previewSlot(plan.counts.size());
+        int size = Math.min(44, slotWidth - 6);
+        int hoveredSlot = Layout.previewSlotAt(game.mouseX, game.mouseY, plan.counts.size());
         int slot = 0;
         g.setFont(BODY);
         for (Map.Entry<EnemyType, Integer> entry : plan.counts.entrySet()) {
-            int x = r.x + 10 + slot * Layout.PREVIEW_SLOT;
+            int x = r.x + 10 + slot * slotWidth;
+            int middle = x + (slotWidth - 4) / 2;
             if (slot == hoveredSlot) {
-                inspected = entry.getKey();
                 g.setColor(CELL_HOVER);
-                g.fillRoundRect(x - 2, r.y + 28, Layout.PREVIEW_SLOT - 4, 84, 8, 8);
+                g.fillRoundRect(x - 2, r.y + 28, slotWidth - 4, 84, 8, 8);
             }
             BufferedImage image = game.assets.enemy(entry.getKey())[0];
-            g.drawImage(image, x + 6, r.y + 36, 44, 44, null);
+            Ui.fit(g, image, middle - size / 2, r.y + 58 - size / 2, size);
             g.setColor(TEXT);
             String count = "x" + entry.getValue();
-            g.drawString(count, x + (Layout.PREVIEW_SLOT - 4 - g.getFontMetrics().stringWidth(count)) / 2, r.y + 102);
+            g.drawString(count, middle - g.getFontMetrics().stringWidth(count) / 2, r.y + 102);
             slot++;
         }
-        if (inspected != null) drawEnemyTip(g, inspected, plan);
     }
 
     private void drawEnemyTip(Graphics2D g, EnemyType type, WavePlan plan) {
-        Rectangle tip = new Rectangle(Layout.PREVIEW.x, Layout.BAR_Y - 124, TOOLTIP_W, 112);
+        Rectangle tip = new Rectangle(Layout.PREVIEW.x, Layout.BAR_Y - 138, TOOLTIP_W, 126);
         Ui.card(g, tip);
-        g.drawImage(game.assets.enemy(type)[0], tip.x + 10, tip.y + 10, 32, 32, null);
+        Ui.fit(g, game.assets.enemy(type)[0], tip.x + 10, tip.y + 10, 32);
         g.setFont(HEAD);
         g.setColor(TEXT);
         g.drawString(type.label, tip.x + 52, tip.y + 24);
         g.setFont(TINY_BOLD);
         g.setColor(GOLD);
-        g.drawString(type.flying ? "Flying" : type.boss() ? "Boss" : "Ground", tip.x + 52, tip.y + 40);
+        String kind = type.boss() ? (type.flying ? "Flying boss" : "Boss") : type.flying ? "Flying" : "Ground";
+        g.drawString(kind, tip.x + 52, tip.y + 40);
         g.setColor(TEXT);
         g.drawString("Health " + Ui.compact(type.hp * plan.hpScale * game.map.toughness) + "    Speed " + Math.round(type.speed)
                 + "    Armor " + Math.round(type.armor), tip.x + 10, tip.y + 62);

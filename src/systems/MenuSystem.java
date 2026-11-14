@@ -7,6 +7,7 @@ import game.TowerType;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 
 /** Draws the screens outside a match: the title and the map select. */
@@ -16,6 +17,7 @@ public final class MenuSystem {
     private static final Color[] DIFFICULTY = {Ui.GOOD, Ui.GOLD, Ui.WARN, Ui.BAD};
 
     private final Game game;
+    private BufferedImage backdrop;
 
     public MenuSystem(Game game) {
         this.game = game;
@@ -28,17 +30,23 @@ public final class MenuSystem {
         if (game.showHelp) Ui.drawHelp(g);
     }
 
-    /** The first map's terrain, blown up to fill the window and dimmed. */
+    /** The first map's terrain, blown up to fill the window and dimmed. Scaled once, then reused. */
     private void drawBackdrop(Graphics2D g) {
-        BufferedImage terrain = game.assets.background(MapDef.MEADOW);
-        float scale = Layout.HEIGHT / (float) terrain.getHeight();
-        int width = Math.round(terrain.getWidth() * scale);
+        if (backdrop == null) {
+            BufferedImage terrain = game.assets.background(MapDef.MEADOW);
+            float scale = Layout.HEIGHT / (float) terrain.getHeight();
+            backdrop = new BufferedImage(Math.round(terrain.getWidth() * scale), Layout.HEIGHT, BufferedImage.TYPE_INT_RGB);
+            Graphics2D b = backdrop.createGraphics();
+            b.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            b.drawImage(terrain, 0, 0, backdrop.getWidth(), Layout.HEIGHT, null);
+            b.setColor(SCRIM);
+            b.fillRect(0, 0, backdrop.getWidth(), Layout.HEIGHT);
+            b.dispose();
+        }
         // Drift slowly sideways so the menu is not a still picture.
-        int slack = width - Layout.WIDTH;
+        int slack = backdrop.getWidth() - Layout.WIDTH;
         int x = -Math.round(slack * (0.5f + 0.5f * (float) Math.sin(game.uiTime * 0.08f)));
-        g.drawImage(terrain, x, 0, width, Layout.HEIGHT, null);
-        g.setColor(SCRIM);
-        g.fillRect(0, 0, Layout.WIDTH, Layout.HEIGHT);
+        Ui.layer(g, backdrop, x, 0);
     }
 
     private void drawTitle(Graphics2D g) {
