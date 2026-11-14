@@ -21,8 +21,9 @@ public final class Assets {
     private final Map<MapDef, BufferedImage> backgrounds = new EnumMap<>(MapDef.class);
     /** Darkens the edges of the field; painted into every terrain. */
     private final BufferedImage vignette;
-    private final Map<EnemyType, BufferedImage[]> enemies = new EnumMap<>(EnemyType.class);
-    private final Map<EnemyType, BufferedImage[]> silhouettes = new EnumMap<>(EnemyType.class);
+    /** Per monster: each animation frame, facing right and mirrored. Most monsters have one frame. */
+    private final Map<EnemyType, BufferedImage[][]> enemies = new EnumMap<>(EnemyType.class);
+    private final Map<EnemyType, BufferedImage[][]> silhouettes = new EnumMap<>(EnemyType.class);
     private final Map<TowerType, BufferedImage[]> bases = new EnumMap<>(TowerType.class);
     private final Map<TowerType, BufferedImage> turrets = new EnumMap<>(TowerType.class);
     private final Map<TowerType, BufferedImage[]> icons = new EnumMap<>(TowerType.class);
@@ -30,10 +31,16 @@ public final class Assets {
 
     public Assets() {
         for (EnemyType type : EnemyType.values()) {
-            BufferedImage image = scale(enemyArt(type), type.scale);
-            enemies.put(type, new BufferedImage[] {image, mirror(image)});
-            BufferedImage white = silhouette(image);
-            silhouettes.put(type, new BufferedImage[] {white, mirror(white)});
+            BufferedImage[] art = frameArt(type);
+            BufferedImage[][] frames = new BufferedImage[art.length][], flashes = new BufferedImage[art.length][];
+            for (int f = 0; f < art.length; f++) {
+                BufferedImage image = scale(art[f], type.scale);
+                BufferedImage white = silhouette(image);
+                frames[f] = new BufferedImage[] {image, mirror(image)};
+                flashes[f] = new BufferedImage[] {white, mirror(white)};
+            }
+            enemies.put(type, frames);
+            silhouettes.put(type, flashes);
         }
         for (TowerType type : TowerType.values()) {
             BufferedImage turret = TowerArt.turret(type);
@@ -68,14 +75,27 @@ public final class Assets {
         });
     }
 
-    /** Index 0 faces right, index 1 is mirrored. */
+    /** The monster's portrait: its first frame. Index 0 faces right, index 1 is mirrored. */
     public BufferedImage[] enemy(EnemyType type) {
-        return enemies.get(type);
+        return enemies.get(type)[0];
     }
 
-    /** All-white copies of the enemy sprites, drawn over them as a hit flash. */
-    public BufferedImage[] enemySilhouette(EnemyType type) {
-        return silhouettes.get(type);
+    /**
+     * How many drawn frames the monster cycles through. Most have one and are brought to life by
+     * squashing it; the Dragon has two, for its wingbeat.
+     */
+    public int enemyFrames(EnemyType type) {
+        return enemies.get(type).length;
+    }
+
+    /** One frame of the monster. Index 0 faces right, index 1 is mirrored. */
+    public BufferedImage[] enemy(EnemyType type, int frame) {
+        return enemies.get(type)[frame];
+    }
+
+    /** All-white copies of a frame, drawn over it as a hit flash. */
+    public BufferedImage[] enemySilhouette(EnemyType type, int frame) {
+        return silhouettes.get(type)[frame];
     }
 
     public BufferedImage base(TowerType type, int tier) {
@@ -96,6 +116,12 @@ public final class Assets {
     }
 
     // ---- monsters ------------------------------------------------------------------------
+
+    /** The frames a monster is drawn with, in order. */
+    private static BufferedImage[] frameArt(EnemyType type) {
+        if (type == EnemyType.DRAGON) return new BufferedImage[] {dragon(true), dragon(false)};
+        return new BufferedImage[] {enemyArt(type)};
+    }
 
     private static BufferedImage enemyArt(EnemyType type) {
         return switch (type) {
@@ -191,24 +217,25 @@ public final class Assets {
                 ".oooooooooooo.s.",
             }, "owkbBsyYg", 0x16204A, 0xE8E0D0, 0x101010, 0x3F6FD8, 0x2B4FA8, 0x7A4B24, 0xFFE14A,
                     0xFFF6B0, 0x8BC34A);
+            // A hooded spectre: an empty cowl with two cold lights, trailing rags.
             case WRAITH -> pixelArt(new String[] {
-                "................",
-                ".....oooooo.....",
-                "...oowwwwwwoo...",
-                "..owwwwwwwwwwo..",
-                ".owwwwwwwwwwwwo.",
-                ".owwkkwwwwkkwwo.",
-                ".owwkkwwwwkkwwo.",
-                ".owwwwwwwwwwwwo.",
-                ".owwwwwkkwwwwwo.",
-                ".owwwwwkkwwwwwo.",
-                ".owwwwwwwwwwwwo.",
-                ".owwwwwwwwwwwwo.",
-                ".owwwwwwwwwwwwo.",
-                ".owwwowwwwowwwo.",
-                ".owwo.owwo.owwo.",
-                "..oo...oo...oo..",
-            }, "owk", 0xB0306070, 0xC8D8F8FF, 0xFF103040);
+                ".......ooo......",
+                "......oCCCo.....",
+                ".....oCcccCo....",
+                "....oCckkkcCo...",
+                "....oCkkkkkDo...",
+                "...oCckekekcCo..",
+                "...oCckkkkkcDo..",
+                "...oCckkkkkcDo..",
+                "..oCcccckccccCo.",
+                ".oCcccccccccccCo",
+                "oCDcccccccccccDC",
+                "bboCccccccDccDbb",
+                "...oCccDcDoCDo..",
+                "....oCDoCDooo...",
+                "....oCooCo......",
+                ".....o..o.......",
+            }, "ocCDkeb", 0xB0204058, 0xD0BFE3EE, 0xE6E6F7FB, 0xC88FB8CC, 0xF00B1420, 0x67E8F9, 0xF0F2EEDD);
             case TROLL -> pixelArt(new String[] {
                 "................",
                 "....oooooo......",
@@ -247,24 +274,25 @@ public final class Assets {
                 "....oooo.oooo...",
             }, "osSdvVkpe", 0x161426, 0x8E96AD, 0xC3CAD9, 0x5A6178, 0x8B5CF6, 0xDDD6FE, 0x0B0B14,
                     0x6D5BD0, 0x67E8F9);
-            case GARGOYLE -> pixelArt(symmetric(
-                "........",
-                "..o.....",
-                ".oso..o.",
-                ".osso.oo",
-                "osSsooSS",
-                "osSSsoeS",
-                "osSsdoSS",
-                "osdsoSwS",
-                "oso.oSSS",
-                ".o..oSSS",
-                "....osSS",
-                "....osSd",
-                ".....oso",
-                "....oso.",
-                "....oo..",
-                "........"
-            ), "osSdew", 0x1C2028, 0x7B8494, 0xA5AEBD, 0x566070, 0xF59E0B, 0xF1F5F9);
+            // Stone wings arched high over a crouched, horned body.
+            case GARGOYLE -> pixelArt(new String[] {
+                "..o..o....o..o..",
+                ".omooLo..oLoomo.",
+                "omMmoLooooLomMmo",
+                "ommMmoLLLLomMmmo",
+                "ommmmmessemmmmmo",
+                "ommmMmssssmMmmmo",
+                ".ommmMswwsMmmmo.",
+                ".ommmmmssmmmmmo.",
+                ".ommmmssssmmmmo.",
+                "..oomssssssmoo..",
+                "...omssddssmo...",
+                "....oLsddsdo....",
+                "...oLssddssLo...",
+                "...oLsdooLsdo...",
+                "..oLdddooLddLo..",
+                "...oooo..oooo...",
+            }, "osLdmMew", 0x1C2028, 0x7B8494, 0xA5AEBD, 0x566070, 0x3F4756, 0x5A6475, 0xF59E0B, 0xF1F5F9);
             case DRUMMER -> pixelArt(new String[] {
                 "................",
                 ".....oooooo.....",
@@ -321,81 +349,171 @@ public final class Assets {
                 ".....obo.obo....",
                 "....ooo..ooo....",
             }, "obBk", 0x1F1F1F, 0xD6CFBE, 0xFFFFFF, 0x101010);
-            case DRAGON -> pixelArt(symmetric(
-                "..o.....",
-                ".oro.o..",
-                ".ormo.oo",
-                "ormmroRR",
-                "ormmmoeR",
-                "ormmmoRR",
-                "ormmdoRw",
-                "ormdoorR",
-                "ordo.ory",
-                "oro..ory",
-                ".o...ory",
-                ".....ory",
-                "....oroy",
-                "...oro.o",
-                "...oo..o",
-                "........"
-            ), "orRdmyew", 0x3B0A0A, 0xD9482B, 0xF47B4F, 0x9C2A17, 0x7F1D1D, 0xFCD34D, 0xFDE047,
-                    0xFFF7ED);
-            case LICH -> pixelArt(symmetric(
-                "...y..y.",
-                "...yyyyy",
-                "...oyyyg",
-                "...obBBB",
-                "...obkeB",
-                "...obkkB",
-                "...obBBk",
-                "....obkb",
-                ".ooVVVoo",
-                "oVVVvVVy",
-                "oVvovVVg",
-                "obo.ovVV",
-                ".o..ovVV",
-                "....ovvV",
-                "...ovdvv",
-                "...o.o.o"
-            ), "oybBkevVdg", 0x12091F, 0xFBBF24, 0xD6CFBE, 0xFFFFFF, 0x0B0B14, 0x67E8F9, 0x5B21B6,
-                    0x8B5CF6, 0x3B1578, 0x22D3EE);
-            case HYDRA, HYDRA_SPAWN -> pixelArt(symmetric(
-                "......oo",
-                ".oo..oTT",
-                "oTTo.oyT",
-                "oyTtooTw",
-                "otwt.otT",
-                ".ott.odt",
-                ".odto.ot",
-                "..ottoot",
-                "..odtttt",
-                "..otttTb",
-                ".otttTbb",
-                ".ottTbbb",
-                ".odtTbbb",
-                ".oddtTbb",
-                "..oddttt",
-                "...ooooo"
-            ), "otTdywb", 0x06302B, 0x1F9E89, 0x4FD1BB, 0x13705F, 0xFDE047, 0xFFFFFF, 0xB7F0C8);
+            case DRAGON -> dragon(true);
+            // A crowned skull over a tattered robe, a staff with a cold orb in one bony hand.
+            case LICH -> pixelArt(new String[] {
+                "........o.oyyo.o........",
+                ".......oyoyyyyoyo...ooo.",
+                ".......oyyyeeyyyo..oEEeo",
+                ".......oyyyyyyyyo..oEeeo",
+                "........oooBbnoo...oeeeo",
+                "........oBBbbbBBo..oeeeo",
+                "........oBkkbkkno...oso.",
+                "........oBekbkeno...oso.",
+                "........oBbbkbbno...oso.",
+                "......ooooBbbbnoooo.oso.",
+                ".....odVVokbknooVVdooso.",
+                "....odvdvVvvvvVVvdvdoso.",
+                "....oVvvdyyyyyyvdvvvVso.",
+                "...oVvvdvvvyyvvvvdvvvso.",
+                "..oVvvddvVveevvdvddvvso.",
+                "..oVvdoVvVvvdvvdvdoVvsVo",
+                ".oVvvdoVvVvvdvvdvdoobbb.",
+                "..oVdoVvvVvvdvvdvdo.oso.",
+                "..bbboVvvVvvdvvdvvVooso.",
+                "..b.boVvvvvvdvvvvvdooso.",
+                ".....oVvvdvvdvvdvvdooso.",
+                ".....oVvdoVdoVdoVvdooso.",
+                "......oVooVdoVdooVo.oso.",
+                ".......o..oo.oo..o...o..",
+            }, "obBnvVdyYeEks", 0x12091F, 0xD6CFBE, 0xFFFFFF, 0x9C947F, 0x5B21B6, 0x8B5CF6, 0x3B1578,
+                    0xFBBF24, 0xFDE68A, 0x67E8F9, 0xECFEFF, 0x0B0B14, 0x6B5A48);
+            // Three snake heads on long necks, fanning out of a coiled body.
+            case HYDRA -> pixelArt(new String[] {
+                "..............o.............",
+                "............ooToo...........",
+                "...........oTTtTTo..........",
+                "...oooo....oTytydo....oooo..",
+                "..oTTTTo...oTtttdo...oTTTTo.",
+                ".ooTyttTo..oTwtwdo..oTttydoo",
+                "oTTttttdo...oTptdo..oTttttTT",
+                "pTttttdo....oTptdo...oTttttd",
+                ".wTwdttTo....oTttTo.oTttdwdw",
+                "..oooTttTo...oTbtdooTttdooo.",
+                ".....oTttTo.oTbbdooTttdo....",
+                ".....oTttdooTtbtdooTttdo....",
+                ".....oTttdoTtbbdo.oTttdo....",
+                "....oTttdooTtbtdo..oTttTo...",
+                "...oTtttdooTbbdo...oTtttTo..",
+                "...oTttdoooTtbtTo..ooTttdo..",
+                "...oTtttTToTtbbdoooTTtttdo..",
+                "....oTttttTttbbtTTTttttdoTo.",
+                "....oTdtttttttttttttttddoTTo",
+                ".....ooTtttttttttttttdoo.oTT",
+                "......oTtttbbbbbbbtttdoooTtd",
+                ".......oTtbbbbbbbbbtttTTTttd",
+                "........oTdBbbbbbBdddtttttdo",
+                ".........oooTddddooooTddddo.",
+            }, "otTdykwbBp", 0x06302B, 0x1F9E89, 0x4FD1BB, 0x13705F, 0xFDE047, 0x101010, 0xFFFFFF, 0xB7F0C8,
+                    0x7FD4A8, 0xF43F5E);
+            // One small head on a short neck: what crawls out of a slain Hydra.
+            case HYDRA_SPAWN -> pixelArt(new String[] {
+                "................",
+                "........ooo.....",
+                "......ooTTTo....",
+                ".....oTTytyTo...",
+                ".....oTttttdo...",
+                ".....oTttwtdo...",
+                "....oTtttdpo....",
+                "...oTtttdoo.....",
+                "...oTttdo.......",
+                "...oTttdo.......",
+                "...oTtttToo...o.",
+                "....oTtttTTo.oTo",
+                "...oTttttttTooTT",
+                "..oTtbbbbbbtTTdo",
+                "...oTbbbbbbddddo",
+                "....ooooooooooo.",
+            }, "otTdykwbBp", 0x06302B, 0x1F9E89, 0x4FD1BB, 0x13705F, 0xFDE047, 0x101010, 0xFFFFFF, 0xB7F0C8,
+                    0x7FD4A8, 0xF43F5E);
+            // A hulk of mossy boulders with burning eyes and a molten crack down its chest.
             case GOLEM -> pixelArt(new String[] {
-                "....oooooooo....",
-                "...osssssssso...",
-                "...osyyssyyso...",
-                "...osyyssyyso...",
-                ".ooossssssssooo.",
-                "osssSssssssSssso",
-                "ossssSssssSsssso",
-                "osssossssssossso",
-                "osssossSSssossso",
-                "osssossssssossso",
-                "osso.osssso.osso",
-                ".oo..osssso..oo.",
-                "....osso.osso...",
-                "....osso.osso...",
-                "...ossso.ossso..",
-                "...ooooo.ooooo..",
-            }, "osSy", 0x2B2F36, 0x8A8F98, 0x5F646D, 0xFFA020);
+                "........................",
+                ".........oooooo.........",
+                "........LLLLLLLL........",
+                ".......oLssssssSo.......",
+                ".......oSSSSSSSSo.......",
+                "..ooooooLyYssYySoooooo..",
+                ".oLggLLoLssssssSoLggLLo.",
+                ".oLsggsLSskkkksSLssggSo.",
+                "oLsssssssSssssSsssssssLo",
+                "oLsssssssSssssSsssssssSo",
+                "oLsssssssSssysSsssssssSo",
+                ".oLsssssSssysysSsssssSo.",
+                ".oLssssSsssYssssSssssSo.",
+                "oLsssSSsssysyssssSSsssLo",
+                "oLssSoLsssssYssssSoLssSo",
+                "oLssSoLssssysssssSoLssSo",
+                "oLgssLoLsSssssSsSoLsssSo",
+                "oLsssSoLsssSSsssSoLssgSo",
+                "oLsssSoLssSooLssSoLsssSo",
+                "oLSsSSoLsSSooLssSoLSsSSo",
+                ".ooLoooLssSooLSsSoooLoo.",
+                "...o.oLsssSooLsssLo.o...",
+                ".....oLSSSSooLSSSSo.....",
+                "......ooooo..ooooo......",
+            }, "osLSyYkg", 0x1D2026, 0x8A8F98, 0xB4B9C2, 0x5F646D, 0xFFA020, 0xFFE08A, 0x15171C, 0x5E8C4A);
         };
+    }
+
+    /**
+     * The Dragon, seen from the side and facing right, with its near wing raised or beaten down:
+     * the two frames of its wingbeat.
+     */
+    private static BufferedImage dragon(boolean wingUp) {
+        String[] rows = wingUp ? new String[] {
+            "............o...................",
+            "...........oro..................",
+            "........oooMoo..o.....o..o......",
+            ".......oMMMMorooDoo..owoowo.....",
+            ".......omMMmmoo.oDDo..owowwo....",
+            ".......oMmmmmorooDDDo..owowoo...",
+            ".....ooMoMmmmmoooDDDDo.oRwekRoo.",
+            "....oMomMmmmmmorooDDDo.oRrrrrRdo",
+            ".oo.ommmmmmmmmorooDDDooRrrrrrrrR",
+            "oddo.omMmmmmmmmoroDDDooRrrdddddd",
+            ".oddooMommmmmmmoroDDDoRrrdowowow",
+            ".oddooommmmmmmmmoroDoRrryYo.....",
+            ".oRooMoooommmmmmorRrRrrrYo......",
+            ".oRo.o..oooooooorrrrrrryYo......",
+            ".oRRooooRRrrrrrrrrrrrryYo.......",
+            ".oRrRRRRrrrrrrrrrrrryYYo........",
+            "..oRrrrrrrrrryyyyrrrYoo.........",
+            "...oRrrrddYyyyyyyyyYo...........",
+            "....oRddoooyyYYYYyYo............",
+            ".....ooo..oRdooooRdo............",
+            ".........oRrdo..oRdo............",
+            "..........www...owwo............",
+            "...........o.....oo.............",
+            "................................",
+        } : new String[] {
+            "................................",
+            "................................",
+            "......................o..o......",
+            ".....................owoowo.....",
+            "......................owowwo....",
+            ".......................owowoo...",
+            ".......................oRwekRoo.",
+            ".......................oRrrrrRdo",
+            ".oo...................oRrrrrrrrR",
+            "oddo..................oRrrdddddd",
+            ".oddo................oRrrdowowow",
+            ".oddo..........ooooooRrryYo.....",
+            ".oRoo.....oooooRrRRRRrrrYo......",
+            ".oRoMooooommmmmorrrrrrryYo......",
+            ".oRRoMmmmmmmmmmorrrrrryYo.......",
+            ".oRrRommmmmmmmorrrrryYYo........",
+            "..oRommmmmmmmmoyyrrrYoo.........",
+            "...oMomMmmmmmoryyyyYo...........",
+            "....ooMoMmmmorYYYyYo............",
+            "......omMMmmoroooRdo............",
+            "......oMMMMoro..oRdo............",
+            ".......oooMoo...oRdo............",
+            "..........o......oo.............",
+            "................................",
+        };
+        return pixelArt(rows, "orRdmMDyYekw", 0x3B0A0A, 0xD9482B, 0xF47B4F, 0x9C2A17, 0x8E2318, 0xC7452C,
+                0x5C1410, 0xFCD34D, 0xD9A21B, 0xFDE047, 0x140606, 0xFFF7ED);
     }
 
     /**
