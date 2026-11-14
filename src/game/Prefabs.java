@@ -8,8 +8,11 @@ import components.Lifetime;
 import components.PathFollower;
 import components.Position;
 import components.Projectile;
+import components.Rally;
+import components.Regen;
 import components.Sprite;
 import components.Status;
+import components.Summoner;
 import components.Tower;
 import components.Velocity;
 import components.Zone;
@@ -50,7 +53,7 @@ public final class Prefabs {
         return enemy(type, hpScale, xs[0] + laneX, ys[0] + laneY, laneX, laneY, xs, ys, 1, length);
     }
 
-    /** Spawns an enemy part-way along a route, e.g. the halves of a split slime. */
+    /** Spawns an enemy part-way along a route, e.g. the halves of a split slime or a raised skeleton. */
     public int enemy(EnemyType type, float hpScale, float x, float y, float laneX, float laneY,
                      float[] xs, float[] ys, int next, float remaining) {
         int e = world.create();
@@ -63,7 +66,18 @@ public final class Prefabs {
         world.add(e, new Status());
         BufferedImage[] images = assets.enemy(type);
         world.add(e, new Sprite(images[0], images[1]));
-        if (type == EnemyType.SHAMAN) world.add(e, new Healer(85, 0.08f, 2.5f));
+        switch (type) {
+            case SHAMAN -> world.add(e, new Healer(85, 0.08f, 2.5f));
+            case TROLL -> world.add(e, new Regen(0.015f));
+            case DRUMMER -> world.add(e, new Rally(85, 0.35f));
+            case NECROMANCER -> world.add(e, new Summoner(EnemyType.SKELETON, 1, 5f));
+            case LICH -> {
+                world.add(e, new Healer(110, 0.05f, 3f));
+                world.add(e, new Summoner(EnemyType.SKELETON, 2, 5f));
+            }
+            case HYDRA -> world.add(e, new Regen(0.006f));
+            default -> { }
+        }
         return e;
     }
 
