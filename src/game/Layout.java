@@ -20,10 +20,11 @@ public final class Layout {
     public static final Rectangle HELP = new Rectangle(WIDTH - 36, 6, 28, 28);
 
     // Bottom bar: next wave on the left, the hand in the middle, controls on the right.
-    public static final Rectangle PREVIEW = new Rectangle(12, BAR_Y + 8, 256, 120);
+    public static final Rectangle PREVIEW = new Rectangle(12, BAR_Y + 8, 232, 120);
+    /** The widest a wave preview entry gets; entries narrow when a wave has many kinds of monster. */
     public static final int PREVIEW_SLOT = 60;
-    public static final int CARD_W = 92, CARD_H = 96, CARD_GAP = 8;
-    public static final int HAND_X = 280;
+    public static final int CARD_W = 82, CARD_H = 96, CARD_GAP = 6;
+    public static final int HAND_X = 256;
     public static final int HAND_W = TowerType.BASES.length * (CARD_W + CARD_GAP) - CARD_GAP;
     public static final Rectangle[] CARDS = new Rectangle[TowerType.BASES.length];
     public static final Rectangle MANA = new Rectangle(HAND_X + 18, BAR_Y + 110, HAND_W - 18, 18);
@@ -40,10 +41,13 @@ public final class Layout {
     public static final Rectangle[] MENU_BUTTONS = new Rectangle[3];
 
     // Fusion chart overlay: a header row and column plus one cell per pair of base towers.
-    public static final Rectangle CHART_CARD = new Rectangle((WIDTH - 820) / 2, 96, 820, 464);
     public static final int RECIPE_CELL = 54;
+    private static final int RECIPE_GRID = (TowerType.BASES.length + 1) * RECIPE_CELL;
+    public static final Rectangle CHART_CARD =
+            new Rectangle((WIDTH - RECIPE_GRID - 436) / 2, (HEIGHT - RECIPE_GRID - 88) / 2, RECIPE_GRID + 436, RECIPE_GRID + 88);
     public static final int RECIPE_X = CHART_CARD.x + 24, RECIPE_Y = CHART_CARD.y + 60;
-    public static final Rectangle CHART_DETAILS = new Rectangle(CHART_CARD.x + 432, CHART_CARD.y + 60, 364, 240);
+    public static final Rectangle CHART_DETAILS =
+            new Rectangle(RECIPE_X + RECIPE_GRID + 24, CHART_CARD.y + 60, 364, 240);
 
     // Title screen and map select.
     public static final Rectangle[] TITLE_BUTTONS = new Rectangle[3];
@@ -93,10 +97,16 @@ public final class Layout {
         return TowerType.hybridOf(TowerType.BASES[row], TowerType.BASES[col]);
     }
 
+    /** Width of one wave preview entry when the wave has this many kinds of monster. */
+    public static int previewSlot(int entries) {
+        return Math.min(PREVIEW_SLOT, (PREVIEW.width - 16) / Math.max(1, entries));
+    }
+
     /** Index of the wave preview entry under the point, or -1. */
-    public static int previewSlotAt(int x, int y) {
+    public static int previewSlotAt(int x, int y, int entries) {
         if (y < PREVIEW.y + 26 || y >= PREVIEW.y + PREVIEW.height || x < PREVIEW.x + 10) return -1;
-        return (x - PREVIEW.x - 10) / PREVIEW_SLOT;
+        int slot = (x - PREVIEW.x - 10) / previewSlot(entries);
+        return slot < entries ? slot : -1;
     }
 
     private Layout() {}

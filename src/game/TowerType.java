@@ -6,7 +6,7 @@ import static game.DamageType.PHYSICAL;
 import java.awt.Color;
 
 /**
- * Every tower kind: six base towers and the fifteen hybrids made by fusing two different bases.
+ * Every tower kind: seven base towers and the twenty-one hybrids made by fusing two different bases.
  * All numbers are tier-1 values; the tier methods scale them.
  */
 public enum TowerType {
@@ -23,6 +23,8 @@ public enum TowerType {
             "Spits poison that eats away at its victims. Spreads its shots across the unpoisoned."),
     PRISM("Sun Prism",     Attack.BEAM,  80, 120, 0.1f, 2.8f, MAGIC,    true,  false, 0,   0xFB923C,
             "A constant beam that burns up to 3x hotter the longer it holds one target."),
+    HEX("Hex Totem",       Attack.BOLT,  50, 125, 0.9f, 9,    MAGIC,    true,  false, 320, 0xA855F7,
+            "Hexes monsters: no healing, and their powers are silenced. Picks out healers first."),
 
     FLAK(ARROW, CANNON, "Flak Battery", Attack.BOLT, 125, 0.4f, 14, PHYSICAL, true, true, 480,
             "Rapid shrapnel bursts. +50% damage to flyers.", "Shorter range than a Ballista."),
@@ -53,7 +55,25 @@ public enum TowerType {
     ARC(TESLA, PRISM, "Arc Prism", Attack.BEAM, 105, 0.1f, 2.0f, MAGIC, true, false, 0,
             "Splits its ramping beam across three targets.", "Shorter range, weaker per beam."),
     SIPHON(VENOM, PRISM, "Siphon Ray", Attack.BEAM, 120, 0.1f, 2.2f, MAGIC, true, false, 0,
-            "Drains its target, generating extra mana while it fires.", "Weak damage.");
+            "Drains its target, generating extra mana while it fires.", "Weak damage."),
+    HUNTER(ARROW, HEX, "Witch Hunter", Attack.BOLT, 200, 1.3f, 34, PHYSICAL, true, true, 640,
+            "Shoots healers, drummers and summoners first, for triple damage, and hexes what it hits.",
+            "Slow reload. Nothing special against the rank and file."),
+    DOOM(CANNON, HEX, "Doom Mortar", Attack.SHELL, 130, 2.2f, 20, MAGIC, false, true, 250,
+            "Its blast hexes and dooms: a doomed monster explodes when it dies, hurting those around it.",
+            "Weak blast of its own. Cannot hit flyers."),
+    DREAD(FROST, HEX, "Dread Obelisk", Attack.PULSE, 95, 3.0f, 6, MAGIC, true, false, 0,
+            "Pulses hex everything in range and send it fleeing back down the road.",
+            "Barely scratches them. Bosses hardly flinch."),
+    REAPER(TESLA, HEX, "Reaper Coil", Attack.CHAIN, 115, 1.1f, 13, MAGIC, true, false, 0,
+            "Hexing lightning that executes badly wounded monsters outright, before they can be healed.",
+            "Weaker arcs than a Tesla Coil."),
+    ROT(VENOM, HEX, "Rot Spitter", Attack.BOLT, 125, 0.9f, 5, MAGIC, true, true, 300,
+            "Its rot turns healing into harm: mending and regrowth hurt the victim instead.",
+            "Only a poison dart when nothing is healing."),
+    SOUL(PRISM, HEX, "Soul Prism", Attack.BEAM, 115, 0.1f, 2.4f, MAGIC, true, false, 0,
+            "A hexing beam that keeps its heat when its target dies and leaps to the next monster.",
+            "Weaker beam. Loses its heat when a target walks away.");
 
     /** How a tower delivers its attack. */
     public enum Attack {
@@ -72,7 +92,7 @@ public enum TowerType {
     }
 
     public static final int MAX_TIER = 4;
-    public static final TowerType[] BASES = {ARROW, CANNON, FROST, TESLA, VENOM, PRISM};
+    public static final TowerType[] BASES = {ARROW, CANNON, FROST, TESLA, VENOM, PRISM, HEX};
     public static final TowerType[] HYBRIDS;
     /** A beam deals this many times its base damage once fully ramped. */
     public static final float BEAM_RAMP = 3;
@@ -152,6 +172,22 @@ public enum TowerType {
         return hitsAir || !enemy.flying;
     }
 
+    /**
+     * How far above the tile centre a standing tower's emitter sits, in pixels: where its beams
+     * and lightning start, and where it flashes as it fires.
+     */
+    public float emitterLift() {
+        return switch (this) {
+            case STORM, SIPHON, HEX -> 20;
+            case ARC -> 19;
+            case REAPER -> 18;
+            case TESLA -> 14;
+            case PLAGUE, DREAD, SOUL -> 11;
+            case PRISM, AURORA -> 8;
+            default -> 5;
+        };
+    }
+
     // ---- merging -------------------------------------------------------------------------
 
     /**
@@ -209,6 +245,7 @@ public enum TowerType {
             case PLASMA -> 52;
             case ACID -> 50;
             case CLUSTER -> 40;
+            case DOOM -> 48;
             default -> 0;
         };
         return base * (1 + 0.1f * (tier - 1));
@@ -219,6 +256,7 @@ public enum TowerType {
             case TESLA -> 2 + tier;
             case STORM -> 4 + tier;
             case PLAGUE -> 3 + tier;
+            case REAPER -> 2 + tier;
             default -> 0;
         };
     }
@@ -254,13 +292,50 @@ public enum TowerType {
             case ACID -> 6;
             case MIASMA -> 5;
             case PLAGUE -> 4.5f;
+            case ROT -> 7;
             default -> 0;
         };
         return base * tierScale(tier);
     }
 
     public float poisonSeconds() {
-        return this == MIASMA ? 3 : 4;
+        return this == MIASMA ? 3 : this == ROT ? 5 : 4;
+    }
+
+    /** Seconds a hit leaves its victim hexed: unable to heal, be healed or use its powers. */
+    public float hexSeconds(int tier) {
+        return switch (this) {
+            case HEX -> 3 + tier;
+            case DOOM, DREAD -> 4;
+            case HUNTER, REAPER -> 3;
+            case SOUL -> 1;
+            default -> 0;
+        };
+    }
+
+    /** Seconds a Rot Spitter hit turns its victim's healing into harm. */
+    public float rotSeconds(int tier) {
+        return this == ROT ? 4 + tier : 0;
+    }
+
+    /** Damage multiplier a Witch Hunter gets against healers, drummers and summoners. */
+    public float casterBonus() {
+        return this == HUNTER ? 3 : 1;
+    }
+
+    /** Share of its maximum health a monster doomed by a Doom Mortar explodes for when it dies. */
+    public float doom(int tier) {
+        return this == DOOM ? 0.20f + 0.04f * (tier - 1) : 0;
+    }
+
+    /** Seconds a Dread Obelisk pulse sends monsters fleeing. */
+    public float fear(int tier) {
+        return this == DREAD ? 0.9f + 0.15f * (tier - 1) : 0;
+    }
+
+    /** A Reaper Coil kills outright any monster it leaves below this share of its health. */
+    public float execute(int tier) {
+        return this == REAPER ? 0.10f + 0.02f * (tier - 1) : 0;
     }
 
     /** Seconds an Acid Mortar hit leaves its victims without armor. */
@@ -310,6 +385,14 @@ public enum TowerType {
             case PLAGUE -> "Chains " + chains(tier) + ", contagious poison " + Math.round(poisonDps(tier)) + "/s";
             case ARC -> "3 beams, each ramps to x3";
             case SIPHON -> String.format("+%.1f mana/s while firing", manaPerSecond(tier));
+            case HEX -> "Hex " + Math.round(hexSeconds(tier)) + "s: no healing, no powers";
+            case HUNTER -> "x3 vs healers and casters, hexes";
+            case DOOM -> "Doomed die in a " + pct(doom(tier)) + "% health blast";
+            case DREAD -> String.format("Hexes all, flee %.1fs", fear(tier));
+            case REAPER -> "Chains " + chains(tier) + ", executes below " + pct(execute(tier)) + "%";
+            case ROT -> "Heals hurt for " + Math.round(rotSeconds(tier)) + "s, poison "
+                    + Math.round(poisonDps(tier)) + "/s";
+            case SOUL -> "Hexes; keeps its x3 heat on a kill";
         };
     }
 
