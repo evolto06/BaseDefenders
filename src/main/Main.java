@@ -22,6 +22,8 @@ import javax.swing.SwingUtilities;
 /** Opens the window and runs the frame loop. All game logic lives behind {@link Game}. */
 public final class Main {
     private static final long FRAME_NANOS = 1_000_000_000L / 60;
+    /** A sleep can overrun by a millisecond or more, so the last stretch before a frame is waited out. */
+    private static final long SPIN_NANOS = 1_500_000;
 
     private final Game game = new Game();
     private final Canvas canvas = new Canvas();
@@ -77,6 +79,7 @@ public final class Main {
 
     private void run() throws InterruptedException {
         long previous = System.nanoTime();
+        long due = previous;
         long fpsWindowStart = previous;
         int frames = 0;
         while (!game.quit) {
@@ -96,8 +99,16 @@ public final class Main {
                 frames = 0;
                 fpsWindowStart = now;
             }
-            long spare = FRAME_NANOS - (System.nanoTime() - now);
-            if (spare > 0) Thread.sleep(spare / 1_000_000, (int) (spare % 1_000_000));
+            // Frames fall due on a steady beat, not a fixed pause after each one, so a slow frame
+            // or an overlong sleep is made up on the next instead of dragging the rate down.
+            due += FRAME_NANOS;
+            if (due < System.nanoTime() - FRAME_NANOS) due = System.nanoTime();
+            long wait;
+            while ((wait = due - System.nanoTime()) > SPIN_NANOS) {
+                long nap = wait - SPIN_NANOS;
+                Thread.sleep(nap / 1_000_000, (int) (nap % 1_000_000));
+            }
+            while (due - System.nanoTime() > 0) Thread.yield();
         }
         System.exit(0);
     }
