@@ -3,7 +3,6 @@ package systems;
 import components.Enemy;
 import ecs.GameSystem;
 import ecs.Query;
-import game.EnemyType;
 import game.Game;
 import game.WavePlan;
 import java.util.List;
@@ -80,7 +79,7 @@ public final class WaveSystem implements GameSystem {
         game.spawnClock = 0;
         game.waveCleared = false;
         String title = "Wave " + game.wave;
-        if (game.activePlan.counts.containsKey(EnemyType.GOLEM)) title += " - BOSS";
+        if (game.activePlan.boss()) title += " - BOSS";
         if (bonus > 0) title += "   (+" + bonus + " mana for calling early)";
         game.toast(title);
     }

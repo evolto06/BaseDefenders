@@ -24,6 +24,7 @@ public final class ProjectileSystem implements GameSystem {
     private static final Color TOXIC = new Color(0xA3E635);
     private static final Color PLASMA = new Color(0xE879F9);
     private static final Color SUN = new Color(0xFDBA74);
+    private static final Color HEX = new Color(0xC084FC), ROT = new Color(0xA16207), SILVER = new Color(0xE5E7EB);
     private static final float BOSS_PERCENT_FACTOR = 0.25f;
     private static final float BOMBLET_RADIUS = 0.7f, BOMBLET_DAMAGE = 0.6f;
 
@@ -103,6 +104,28 @@ public final class ProjectileSystem implements GameSystem {
                 game.combat.poison(pr.target, type.poisonDps(tier), type.poisonSeconds(), false);
                 game.prefabs.burst(x, y, TOXIC, 3);
             }
+            case HEX -> {
+                if (pr.target == World.NONE) return;
+                game.combat.damage(pr.target, damage, type.damageType);
+                game.combat.hex(pr.target, type.hexSeconds(tier));
+                game.prefabs.burst(x, y, HEX, 3);
+            }
+            case HUNTER -> {
+                Enemy enemy = enemies.get(pr.target);
+                if (enemy == null) return;
+                boolean caster = enemy.type.caster();
+                game.combat.damage(pr.target, caster ? damage * type.casterBonus() : damage, type.damageType);
+                game.combat.hex(pr.target, type.hexSeconds(tier));
+                if (caster) game.prefabs.flash(x, y, 14, HEX, 0.2f);
+                game.prefabs.burst(x, y, SILVER, caster ? 5 : 2);
+            }
+            case ROT -> {
+                if (pr.target == World.NONE) return;
+                game.combat.damage(pr.target, damage, type.damageType);
+                game.combat.poison(pr.target, type.poisonDps(tier), type.poisonSeconds(), false);
+                game.combat.rot(pr.target, type.rotSeconds(tier));
+                game.prefabs.burst(x, y, ROT, 3);
+            }
             case SUNBOW -> {
                 Health h = healths.get(pr.target);
                 Enemy enemy = enemies.get(pr.target);
@@ -142,6 +165,10 @@ public final class ProjectileSystem implements GameSystem {
                     game.prefabs.explosion(bx, by, radius * BOMBLET_RADIUS, SUN);
                 }
             }
+            case DOOM -> {
+                splash(type, tier, x, y, radius, damage, 1);
+                game.prefabs.explosion(x, y, radius, HEX);
+            }
             case BLIZZARD -> {
                 splash(type, tier, x, y, radius, damage, 1);
                 game.prefabs.zone(pr.owner, x, y, type.zoneRadius(tier), type.slow(tier), type.zoneDps(tier), ICE, ZONE_SECONDS);
@@ -159,6 +186,10 @@ public final class ProjectileSystem implements GameSystem {
             boolean flying = enemies.get(e).type.flying;
             if (flying && !type.hitsAir) continue;
             if (type == TowerType.ACID) game.combat.shred(e, type.shredSeconds(tier));
+            if (type == TowerType.DOOM) {
+                game.combat.hex(e, type.hexSeconds(tier));
+                game.combat.doom(e, type.doom(tier), type.hexSeconds(tier));
+            }
             game.combat.damage(e, flying ? damage * airBonus : damage, type.damageType);
             if (type.burnDps(tier) > 0) game.combat.burn(e, type.burnDps(tier), BURN_SECONDS);
             if (type.poisonDps(tier) > 0) game.combat.poison(e, type.poisonDps(tier), type.poisonSeconds(), false);

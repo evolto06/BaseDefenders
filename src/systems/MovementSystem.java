@@ -11,7 +11,7 @@ import ecs.Store;
 import game.Game;
 import java.awt.Color;
 
-/** Walks enemies along their route; those that reach the end cost lives. */
+/** Walks enemies along their route, or back down it while they flee; those that reach the end cost lives. */
 public final class MovementSystem implements GameSystem {
     private static final Color LEAK = new Color(0xFF5A5A);
 
@@ -46,7 +46,11 @@ public final class MovementSystem implements GameSystem {
             if (s != null && s.stunTime > 0) continue;
             enemy.animTime += dt;
 
-            float budget = f.speed * dt * (s == null ? 1 : 1 - s.slow);
+            float budget = f.speed * dt * (s == null ? 1 : (1 + s.haste) * (1 - s.slow));
+            if (s != null && s.fearTime > 0) {
+                retreat(f, p, sprites.get(e), budget);
+                continue;
+            }
             while (budget > 0 && f.next < f.xs.length) {
                 float tx = f.xs[f.next] + f.laneX, ty = f.ys[f.next] + f.laneY;
                 float dx = tx - p.x, dy = ty - p.y;
@@ -67,6 +71,30 @@ public final class MovementSystem implements GameSystem {
                 }
             }
             if (f.next >= f.xs.length) reachBase(e, enemy, p);
+        }
+    }
+
+    /** A frightened monster runs back the way it came, no further than where it entered. */
+    private static void retreat(PathFollower f, Position p, Sprite sprite, float budget) {
+        while (budget > 0) {
+            int previous = f.next - 1;
+            float tx = f.xs[previous] + f.laneX, ty = f.ys[previous] + f.laneY;
+            float dx = tx - p.x, dy = ty - p.y;
+            float dist = (float) Math.sqrt(dx * dx + dy * dy);
+            if (dist <= budget) {
+                p.x = tx;
+                p.y = ty;
+                f.remaining += dist;
+                budget -= dist;
+                if (previous == 0) return;
+                f.next = previous;
+            } else {
+                p.x += dx / dist * budget;
+                p.y += dy / dist * budget;
+                f.remaining += budget;
+                budget = 0;
+                if (sprite != null && Math.abs(dx) > 1) sprite.flip = dx < 0;
+            }
         }
     }
 
