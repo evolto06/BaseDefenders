@@ -1,6 +1,6 @@
 package components;
 
-/** Timed debuffs on an enemy. Each effect keeps its strongest value and longest duration. */
+/** Timed effects on an enemy. Each one keeps its strongest value and longest duration. */
 public final class Status {
     /** Fraction of movement speed removed, 0..1. */
     public float slow, slowTime;
@@ -13,6 +13,20 @@ public final class Status {
     public boolean contagious;
     /** While positive, armor counts as zero. */
     public float shredTime;
-    /** Towers credited with the damage-over-time effects, or -1. */
-    public int burnOwner = -1, poisonOwner = -1;
+    /** While positive, the monster cannot be healed and its own powers are silenced. */
+    public float hexTime;
+    /** While positive, healing and regeneration hurt the monster instead. */
+    public float rotTime;
+    /** A doomed monster explodes on death for this fraction of its maximum health. */
+    public float doom, doomTime;
+    /** While positive, the monster flees back down the road. */
+    public float fearTime;
+    /** Seconds until it can be frightened again. */
+    public float fearGuard;
+    /** Seconds until another healer's pulse can mend it, so stacked healers do not multiply. */
+    public float mendGuard;
+    /** Fraction of extra movement speed from a War Drummer nearby. */
+    public float haste, hasteTime;
+    /** Towers credited with the lingering effects, or -1. */
+    public int burnOwner = -1, poisonOwner = -1, rotOwner = -1, doomOwner = -1;
 }
