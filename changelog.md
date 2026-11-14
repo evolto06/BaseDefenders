@@ -83,3 +83,47 @@
   mana fills.
 - Tower details float over the field corner; the fusion chart is an overlay (`C`).
 - Pause menu (Resume / Restart / Change map), also used as the defeat screen.
+
+## 2.4.0 — Tower art
+- Every one of the 21 towers has its own hand-drawn sprite; no two share a shape any more.
+  Turning turrets are seen from above (ballista, mortar, viper head, twin flak guns, rail gun...),
+  standing towers from the front (ice shards, coil, sun lens, storm cloud, rune monolith, skull...).
+- Turning turrets sit on a turntable, standing towers on a dais.
+- Standing towers fire from their emitter instead of the tile centre: lightning leaves the coil's
+  ball, beams leave the lens, and the Arc Prism throws one beam from each of its three lenses.
+
+## 2.5.0 — Hexes, more monsters, more bosses
+- New base tower, the Hex Totem, and six hybrids: Witch Hunter, Doom Mortar, Dread Obelisk,
+  Reaper Coil, Rot Spitter and Soul Prism. 28 tower kinds in all; the hand holds seven cards
+  (`1`-`7`) and the fusion chart is 7x7.
+- Hex: a hexed monster cannot be healed and loses its powers (healing, regrowth, drumming,
+  summoning, wards, slow immunity, splitting). Bosses shake it off in half the time.
+- New mechanics: doom (the doomed explode on death for a share of their health), fear (monsters
+  flee back down the road), execute, rot (healing hurts instead), heat that survives a kill,
+  and towers that pick out healers and other casters first.
+- Five new monsters: Troll (regenerates), Rune Knight (resists magic), Gargoyle (armored flyer),
+  War Drummer (speeds others up) and Necromancer (raises Skeletons).
+- Three new bosses: Dragon (flies), Lich (heals, summons, resists magic) and Hydra (regenerates,
+  splits). Boss waves rotate through them and wave 30 fields all four.
+- Healing no longer stacks without limit: a monster that was just mended ignores every healer
+  for 1.5 seconds, and healing pulses restore a quarter as much on bosses.
+- The wave preview narrows its entries to fit up to seven kinds of monster; hexed monsters are
+  marked with a violet cross; the boss bar names the boss on the field.
+
+## 2.6.0 — Performance
+- Found the cause of the slow frames: on machines where Java disables Direct3D (most Intel
+  graphics) everything is painted in software, and at a fractional display scale such as 125%
+  every sprite was being smoothed and every shape antialiased. A busy endless frame took about
+  76 ms; it now takes about 6.
+- The field is drawn at its own size off screen and scaled to the window in one pass. At a
+  fractional scale it is smoothed only when the graphics card can do it; otherwise the pixels
+  are simply enlarged.
+- Terrain, the vignette and tower platforms are a cached ground layer. Shadows, glows, flashes,
+  turret headings and monster squash frames are pre-painted stamps. Beams, lightning, rings and
+  sparks are blended directly into the pixels.
+- The status bar, bottom bar, hand cards and the selected tower's card are cached and repainted
+  about fifteen times a second instead of every frame.
+- Drawing no longer produces megabytes of garbage a second, so the collector pauses a few times
+  a minute instead of every few seconds.
+- Frames are paced to a steady beat, so one slow frame or overlong sleep no longer drags the
+  rate down. The menus and the fusion chart are several times faster too.
