@@ -127,3 +127,14 @@
   a minute instead of every few seconds.
 - Frames are paced to a steady beat, so one slow frame or overlong sleep no longer drags the
   rate down. The menus and the fusion chart are several times faster too.
+
+## 2.7.0 — Monster art
+- The four bosses are redrawn at the same pixel size as everything else instead of being a small
+  picture blown up three times, so they carry far more detail at the same size on screen.
+- The Dragon is seen from the side, with a long neck, horns, a spade-tipped tail and a wing that
+  beats: it is the first monster with drawn animation frames. It is wider than it is tall.
+- The Hydra has three snake heads on separate necks over a coiled body, and the Hydra Spawn is
+  its own single-headed hatchling rather than a shrunken Hydra.
+- The Golem is a hulk of mossy boulders with a molten crack; the Lich carries a staff and orb.
+- The Gargoyle crouches under wings arched overhead, so it no longer reads as a grey Bat, and the
+  Wraith is a hooded spectre with two cold lights instead of a plain ghost.

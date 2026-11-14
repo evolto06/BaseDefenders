@@ -182,4 +182,7 @@ chart size themselves from `TowerType.BASES`.
 
 To add a monster, add a constant to `EnemyType` and its sprite to `Assets.enemyArt`, give it a
 power by attaching a component in `Prefabs.enemy`, and list it in `WavePlan.UNLOCK_ORDER` (or
-`EnemyType.BOSSES`). Powers should check `Combat.hexed` so a hex can switch them off.
+`EnemyType.BOSSES`). Powers should check `Combat.hexed` so a hex can switch them off. A sprite
+is drawn facing right, at any width and height, and shown at `EnemyType.scale` times its size.
+Most monsters are one picture, brought to life by squashing it; one that needs real frames, as
+the Dragon does for its wingbeat, returns them from `Assets.frameArt`.
