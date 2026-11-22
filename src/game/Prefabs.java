@@ -1,5 +1,7 @@
 package game;
 
+import components.Blinker;
+import components.Burrower;
 import components.Effect;
 import components.Enemy;
 import components.Healer;
@@ -78,6 +80,8 @@ public final class Prefabs {
             }
             case HYDRA -> world.add(e, new Regen(0.006f));
             case WARDEN -> world.add(e, new Shielder(80, 5f));
+            case IMP -> world.add(e, new Blinker(70, 3.5f));
+            case BORER -> world.add(e, new Burrower(3f, 2.5f));
             default -> { }
         }
         return e;

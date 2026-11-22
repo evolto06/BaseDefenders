@@ -9,7 +9,9 @@ import java.util.Arrays;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import systems.BlinkSystem;
 import systems.BuildSystem;
+import systems.BurrowSystem;
 import systems.DeathSystem;
 import systems.EconomySystem;
 import systems.EffectSystem;
@@ -127,6 +129,8 @@ public final class Game {
             new WaveSystem(this),
             new EconomySystem(this),
             new StatusSystem(this),
+            new BlinkSystem(this),
+            new BurrowSystem(this),
             new MovementSystem(this),
             new HealerSystem(this),
             new RallySystem(this),
@@ -171,7 +175,7 @@ public final class Game {
         lives = START_LIVES;
         wave = 0;
         kills = 0;
-        nextPlan = WavePlan.forWave(1);
+        nextPlan = WavePlan.forWave(1, map);
         activePlan = null;
         waveTimer = 0;
         enemyCount = 0;

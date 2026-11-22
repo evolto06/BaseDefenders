@@ -35,7 +35,9 @@ public final class StatusSystem implements GameSystem {
             if (s.fearTime > 0) s.fearTime -= dt;
             if (s.fearGuard > 0) s.fearGuard -= dt;
             if (s.mendGuard > 0) s.mendGuard -= dt;
+            if (s.coldGuard > 0) s.coldGuard -= dt;
             if (s.shieldBreak > 0) s.shieldBreak -= dt;
+            if (s.burrowTime > 0) s.burrowTime -= dt;
             if (s.brittleTime > 0 && (s.brittleTime -= dt) <= 0) s.brittle = 0;
             if (s.doomTime > 0 && (s.doomTime -= dt) <= 0) s.doom = 0;
             if (s.burnTime > 0) {

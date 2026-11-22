@@ -115,6 +115,7 @@ public final class TowerSystem implements GameSystem {
         Position tp = positions.get(target);
         Health h = healths.get(target);
         if (tp == null || h == null || h.hp <= 0) return false;
+        if (statuses.get(target).burrowTime > 0) return false;
         float dx = tp.x - p.x, dy = tp.y - p.y;
         return dx * dx + dy * dy <= range * range;
     }

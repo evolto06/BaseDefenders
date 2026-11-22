@@ -2,6 +2,7 @@ package game;
 
 import components.Health;
 import components.Position;
+import components.Status;
 import ecs.Query;
 import ecs.Store;
 import ecs.World;
@@ -9,7 +10,8 @@ import java.util.Arrays;
 
 /**
  * Uniform grid of living enemies, rebuilt once per step with a counting sort, so range queries
- * touch only nearby cells instead of every enemy.
+ * touch only nearby cells instead of every enemy. Monsters underground are left out, so no tower,
+ * blast or aura can find them.
  */
 public final class SpatialGrid {
     private static final int CELL = Level.TILE;
@@ -18,6 +20,7 @@ public final class SpatialGrid {
 
     private final Store<Position> positions;
     private final Store<Health> healths;
+    private final Store<Status> statuses;
     private final int[] start = new int[COLS * ROWS + 1];
     private final int[] cursor = new int[COLS * ROWS];
     private int[] cellOf = new int[256];
@@ -27,6 +30,7 @@ public final class SpatialGrid {
     public SpatialGrid(World world) {
         positions = world.store(Position.class);
         healths = world.store(Health.class);
+        statuses = world.store(Status.class);
     }
 
     public void rebuild(Query enemies) {
@@ -39,7 +43,13 @@ public final class SpatialGrid {
         }
         Arrays.fill(start, 0);
         for (int i = 0; i < n; i++) {
-            Position p = positions.get(enemies.get(i));
+            int e = enemies.get(i);
+            Status s = statuses.get(e);
+            if (s != null && s.burrowTime > 0) {
+                cellOf[i] = -1;
+                continue;
+            }
+            Position p = positions.get(e);
             int cell = p == null ? 0 : row(p.y) * COLS + col(p.x);
             cellOf[i] = cell;
             start[cell + 1]++;
@@ -48,7 +58,9 @@ public final class SpatialGrid {
             start[c + 1] += start[c];
             cursor[c] = start[c];
         }
-        for (int i = 0; i < n; i++) items[cursor[cellOf[i]]++] = enemies.get(i);
+        for (int i = 0; i < n; i++) {
+            if (cellOf[i] >= 0) items[cursor[cellOf[i]]++] = enemies.get(i);
+        }
     }
 
     /**

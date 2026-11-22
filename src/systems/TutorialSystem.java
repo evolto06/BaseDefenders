@@ -13,7 +13,7 @@ public final class TutorialSystem implements GameSystem {
     private static final float SHOW_SECONDS = 10;
     private static final float FULL_MANA_REPEAT = 45;
     private static final int MERGE = 1, FUSE = 2, BATS = 4, GOLEM = 8, HEALERS = 16, KNIGHTS = 32;
-    private static final int DRAGON = 64, LICH = 128, HYDRA = 256, WARDEN = 512;
+    private static final int DRAGON = 64, LICH = 128, HYDRA = 256, WARDEN = 512, RESIDENT = 1024;
 
     private final Game game;
     private final Query towerQuery;
@@ -58,6 +58,8 @@ public final class TutorialSystem implements GameSystem {
         } else if (unseen(WARDEN) && coming(EnemyType.WARDEN)) {
             show(WARDEN, "Aegis Wardens next wave: their shields swallow a whole hit, freeze and all. "
                     + "Fast or area fire breaks them; a hex silences the Warden.");
+        } else if (unseen(RESIDENT) && coming(game.map.resident)) {
+            show(RESIDENT, residentTip(game.map.resident));
         } else if (unseen(KNIGHTS) && coming(EnemyType.KNIGHT)) {
             show(KNIGHTS, "Rune Knights next wave: magic does 60% less to them. Use Ballistas and Mortars, or hex them.");
         } else if (unseen(GOLEM) && coming(EnemyType.GOLEM)) {
@@ -73,6 +75,21 @@ public final class TutorialSystem implements GameSystem {
             game.hintTime = SHOW_SECONDS / 2;
             fullManaCooldown = FULL_MANA_REPEAT;
         }
+    }
+
+    /** What to say before a map's own monster first shows up. */
+    private static String residentTip(EnemyType type) {
+        return switch (type) {
+            case IMP -> "Blink Imps next wave: freezing one or hitting it hard makes it blink ahead. "
+                    + "Wear them down with steady fire.";
+            case BORER -> "Dune Borers next wave: they dig under the road where nothing can reach them. "
+                    + "Spread your towers along the whole road.";
+            case YETI -> "Yetis next wave: cold mends them, so frost does more harm than good. "
+                    + "Bring raw damage, or hex them first.";
+            case SALAMANDER -> "Salamanders next wave: they shrug off freezes in a flash and sprint off, "
+                    + "and fire cannot hurt them. Try poison.";
+            default -> type.label + " next wave. " + type.trait;
+        };
     }
 
     private boolean coming(EnemyType type) {

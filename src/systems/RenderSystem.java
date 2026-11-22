@@ -72,6 +72,7 @@ public final class RenderSystem {
     private static final Color HURT = new Color(220, 38, 38), FROST_GLAZE = new Color(186, 230, 253);
     private static final Color FLAK_SHELL = new Color(0x404040);
     private static final Color SHIELD = new Color(0xFDE68A);
+    private static final Color MOUND = new Color(0xB08D57), MOUND_DARK = new Color(0x6B5233);
     private static final Color BOSS_BACK = new Color(0x3A1D1D);
     private static final Color PLASMA_SHOT = new Color(0xE879F9), ICE_SHOT = new Color(0xBAE6FD);
     private static final Color ACID_SHOT = new Color(0xA3E635), SUN_SHOT = new Color(0xFDBA74);
@@ -299,14 +300,24 @@ public final class RenderSystem {
             Sprite sprite = sprites.get(e);
             Health h = healths.get(e);
             Status s = statuses.get(e);
+            int r = Math.round(enemy.type.radius);
+            int cx = Math.round(p.x), cy = Math.round(p.y);
+            if (s != null && s.burrowTime > 0) {
+                // Underground: only a ridge of churned earth shows where it is.
+                int bump = Math.round((float) Math.sin(enemy.animTime * 9) * 1.5f);
+                g.drawImage(stamps.shadow(r), cx - r, cy - r / 2, null);
+                g.setColor(MOUND_DARK);
+                g.fillOval(cx - r, cy - 3, r * 2, 9);
+                g.setColor(MOUND);
+                g.fillOval(cx - r + 4, cy - 5 + bump, r * 2 - 8, 6);
+                continue;
+            }
             int side = sprite.flip ? 1 : 0;
             // A monster with drawn frames steps through them; the rest are animated by squashing.
             int frames = game.assets.enemyFrames(enemy.type);
             int frame = frames > 1 ? (int) (enemy.animTime * FRAME_RATE) % frames : 0;
             BufferedImage image = game.assets.enemy(enemy.type, frame)[side];
             int w = image.getWidth(), ht = image.getHeight();
-            int r = Math.round(enemy.type.radius);
-            int cx = Math.round(p.x), cy = Math.round(p.y);
 
             // Walkers squash and stretch as they step; flyers flap and bob in the air.
             float scaleX, scaleY, lift;

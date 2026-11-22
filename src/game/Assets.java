@@ -446,6 +446,82 @@ public final class Assets {
                 "..ooo.ooo.......",
             }, "oraAkecGg", 0x2A1E08, 0xDC2626, 0xA8B0C0, 0x6B7385, 0x101010, 0xFDE68A, 0x7A2E2E,
                     0xD4A72C, 0xFDE68A);
+            // A grinning little horned imp on stubby wings.
+            case IMP -> pixelArt(new String[] {
+                "................",
+                "...o......o.....",
+                "...oho....oho...",
+                "....oppppppo....",
+                "...oppppppppo...",
+                "...opypppyppo...",
+                "...oppwwwwppo...",
+                "....oppppppo....",
+                ".ov.oppppppo.vo.",
+                ".ovvopPPPPpovvo.",
+                "..ovopPPPPpovo..",
+                "...oopppppoo....",
+                "....op..po......",
+                "....op..po......",
+                "...oop.oop......",
+                "...ooo.ooo......",
+            }, "ohpywvP", 0x3B0A2A, 0x4A044E, 0xE05AA8, 0xFDE047, 0xFFFFFF, 0xA21CAF, 0xF9A8D4);
+            // A banded sand beetle with a drill for a horn.
+            case BORER -> pixelArt(new String[] {
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "......oooo......",
+                "....ooSSSSoo....",
+                "...oSSsSSsSSo...",
+                "..oSsSSsSSsSSoo.",
+                ".oSsSSsSSsSSoyDo",
+                ".oSsSSsSSsSSodDD",
+                ".oddddddddddoDdo",
+                "..oddddddddddoo.",
+                "..olo.olo.olo...",
+                ".olo.olo.olo....",
+                ".oo..oo..oo.....",
+            }, "oSsdyDl", 0x2B1A0A, 0xC2915A, 0xE0B77A, 0x7A5530, 0xFDE047, 0x9CA3AF, 0x4A3420);
+            // A shaggy white snow beast with a blue face and black claws.
+            case YETI -> pixelArt(new String[] {
+                "................",
+                ".....oooooo.....",
+                "....owwwwwwo....",
+                "...owwwwwwwwo...",
+                "...owwfffffwo...",
+                "...owfkfffkfo...",
+                "...owfmmmmfwo...",
+                "..owwwffffwwwo..",
+                ".owwwwwwwwwwwwo.",
+                "owwWwwwwwwwwWwwo",
+                "owWwowwwwwwowWwo",
+                "owwwowwwwwwowwwo",
+                ".okoowwwwwwooko.",
+                "...owwWooWwwo...",
+                "...owwwo.owwwo..",
+                "...ooooo.ooooo..",
+            }, "owWfkm", 0x1E2A3A, 0xF1F5F9, 0xBFD3E6, 0x7B9AB8, 0x0B1220, 0x1E3A5F);
+            // A spotted fire lizard with flames licking along its back.
+            case SALAMANDER -> pixelArt(new String[] {
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "......F...F.....",
+                ".....FyF.FyF....",
+                "....oooooooooo..",
+                "...ossssssssssoo",
+                "oo.osbsbsbsbssko",
+                "osoosssssssssssm",
+                ".ossossssssssoo.",
+                "..oo.olo...olo..",
+                ".....oo....oo...",
+                "................",
+            }, "osbkmFyl", 0x3B1205, 0xF97316, 0xFDE047, 0x101010, 0xB91C1C, 0xEF4444, 0xFDE047, 0xC2410C);
             // A hulk of mossy boulders with burning eyes and a molten crack down its chest.
             case GOLEM -> pixelArt(new String[] {
                 "........................",

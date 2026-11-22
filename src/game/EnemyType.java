@@ -33,6 +33,18 @@ public enum EnemyType {
     WARDEN("Aegis Warden", 80, 38,  2,  2, 12, false, false, 6, 1.80f, 2.0f, 0xD4A72C,
             "Shields the monsters around it. A shield swallows the next hit whole, freeze and all, "
             + "so fast-firing and area towers break them best. A hex silences it. Costs 2 lives."),
+    IMP("Blink Imp",       40,  64,  0,  1, 10, false, false, 3, 0.70f, 2.0f, 0xE05AA8,
+            "Blinks ahead down the road when it is frozen or struck hard, shaking off the ice. "
+            + "A hex grounds it."),
+    BORER("Dune Borer",    95,  46,  2,  2, 12, false, false, 5, 1.20f, 2.0f, 0xC2915A,
+            "Burrows under the road for stretches, where nothing can touch it, and comes up thawed. "
+            + "A hex keeps it above ground. Costs 2 lives."),
+    YETI("Yeti",          150,  36,  1,  2, 13, false, false, 6, 1.50f, 2.0f, 0xDDE8F0,
+            "At home in the cold: slows and freezes slide off it and mend it instead. "
+            + "A hex numbs it. Costs 2 lives."),
+    SALAMANDER("Salamander", 70, 56, 0,  1, 11, false, false, 4, 0.90f, 2.0f, 0xF97316,
+            "Fireproof. Thaws from a freeze in a quarter of the time and bolts off in a fury, "
+            + "and slows only half hold it. A hex calms it."),
     GOLEM("Golem",       1100,  22,  8, 10, 22, false, false, 0, 5.00f, 2.0f, 0x8A8F98,
             "Boss. Heavy armor, shrugs off slows. Costs 10 lives."),
     DRAGON("Dragon",      650,  27,  3, 10, 22, true,  false, 0, 5.00f, 2.0f, 0xD9482B,

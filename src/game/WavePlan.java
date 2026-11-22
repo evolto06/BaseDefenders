@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-/** The spawn schedule for one wave, generated deterministically from the wave number. */
+/** The spawn schedule for one wave, generated deterministically from the wave number and map. */
 public final class WavePlan {
     public record Spawn(float time, EnemyType type) {}
 
@@ -18,7 +18,11 @@ public final class WavePlan {
         EnemyType.NECROMANCER
     };
     private static final int[] UNLOCK_WAVE = {1, 2, 3, 4, 6, 7, 9, 11, 13, 16, 18, 21};
-
+    /**
+     * When the map's resident monster first appears. From then on it leads a group every other
+     * wave, so each map keeps asking its own question of the defence.
+     */
+    private static final int RESIDENT_WAVE = 8;
     private static final int BOSS_EVERY = 5;
     /** Largest number of one monster type in a wave, so swarms stay readable. */
     private static final int MAX_GROUP = 40;
@@ -34,7 +38,7 @@ public final class WavePlan {
         this.hpScale = 1 + 0.2f * w + 0.022f * w * w;
     }
 
-    public static WavePlan forWave(int wave) {
+    public static WavePlan forWave(int wave, MapDef map) {
         WavePlan plan = new WavePlan(wave);
         Random random = new Random(9176L * wave + 13);
 
@@ -44,7 +48,14 @@ public final class WavePlan {
             if (wave >= UNLOCK_WAVE[i]) pool.add(UNLOCK_ORDER[i]);
             if (wave == UNLOCK_WAVE[i]) newcomer = UNLOCK_ORDER[i];
         }
+        EnemyType resident = map.resident;
+        if (wave >= RESIDENT_WAVE) pool.add(resident);
+        if (wave == RESIDENT_WAVE) newcomer = resident;
         Collections.shuffle(pool, random);
+        if (wave > RESIDENT_WAVE && wave % 2 == 0) {
+            pool.remove(resident);
+            pool.add(0, resident);
+        }
         if (newcomer != null) {
             // A newly unlocked monster always shows up on its first wave.
             pool.remove(newcomer);
