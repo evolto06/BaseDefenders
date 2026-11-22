@@ -43,7 +43,7 @@ public final class ZoneSystem implements GameSystem {
                 int enemy = game.grid.result(k);
                 if (enemies.get(enemy).type.flying) continue;
                 game.combat.slow(enemy, zone.slow, TICK * 2);
-                game.combat.damage(enemy, zone.dps * TICK, DamageType.MAGIC);
+                game.combat.tick(enemy, zone.dps * TICK, DamageType.MAGIC);
             }
         }
         game.combat.source = World.NONE;

@@ -1,6 +1,7 @@
 package game;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -8,16 +9,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-/** The spawn schedule for one wave, generated deterministically from the wave number. */
+/** The spawn schedule for one wave, generated deterministically from the wave number and map. */
 public final class WavePlan {
     public record Spawn(float time, EnemyType type) {}
 
     private static final EnemyType[] UNLOCK_ORDER = {
-        EnemyType.SLIME, EnemyType.GOBLIN, EnemyType.ORC, EnemyType.BAT, EnemyType.SHAMAN, EnemyType.WRAITH,
-        EnemyType.TROLL, EnemyType.KNIGHT, EnemyType.GARGOYLE, EnemyType.DRUMMER, EnemyType.NECROMANCER
+        EnemyType.SLIME, EnemyType.GOBLIN, EnemyType.ORC, EnemyType.BAT, EnemyType.WARDEN, EnemyType.SHAMAN,
+        EnemyType.WRAITH, EnemyType.TROLL, EnemyType.KNIGHT, EnemyType.GARGOYLE, EnemyType.DRUMMER,
+        EnemyType.NECROMANCER
     };
-    private static final int[] UNLOCK_WAVE = {1, 2, 3, 4, 7, 9, 11, 13, 16, 18, 21};
+    private static final int[] UNLOCK_WAVE = {1, 2, 3, 4, 6, 7, 9, 11, 13, 16, 18, 21};
+    /**
+     * When the map's resident monster first appears. From then on it leads a group every other
+     * wave, so each map keeps asking its own question of the defence.
+     */
+    private static final int RESIDENT_WAVE = 8;
     private static final int BOSS_EVERY = 5;
+    /** Seconds between bosses on a boss wave; the final wave spreads its five out further. */
+    private static final float BOSS_GAP = 6, FINAL_BOSS_GAP = 14;
     /** Largest number of one monster type in a wave, so swarms stay readable. */
     private static final int MAX_GROUP = 40;
 
@@ -32,7 +41,7 @@ public final class WavePlan {
         this.hpScale = 1 + 0.2f * w + 0.022f * w * w;
     }
 
-    public static WavePlan forWave(int wave) {
+    public static WavePlan forWave(int wave, MapDef map) {
         WavePlan plan = new WavePlan(wave);
         Random random = new Random(9176L * wave + 13);
 
@@ -42,7 +51,14 @@ public final class WavePlan {
             if (wave >= UNLOCK_WAVE[i]) pool.add(UNLOCK_ORDER[i]);
             if (wave == UNLOCK_WAVE[i]) newcomer = UNLOCK_ORDER[i];
         }
+        EnemyType resident = map.resident;
+        if (wave >= RESIDENT_WAVE) pool.add(resident);
+        if (wave == RESIDENT_WAVE) newcomer = resident;
         Collections.shuffle(pool, random);
+        if (wave > RESIDENT_WAVE && wave % 2 == 0) {
+            pool.remove(resident);
+            pool.add(0, resident);
+        }
         if (newcomer != null) {
             // A newly unlocked monster always shows up on its first wave.
             pool.remove(newcomer);
@@ -60,11 +76,15 @@ public final class WavePlan {
         }
         if (bossWave) {
             // Each boss wave is led by the next boss in line, backed by the ones before it, so
-            // a new boss arrives beside a familiar one and the final wave fields all four.
-            int bosses = 1 + wave / 10;
+            // a new boss arrives beside a familiar one. The map's own boss is last in line: it
+            // leads wave 25, and the final wave fields every boss.
+            EnemyType[] roster = Arrays.copyOf(EnemyType.BOSSES, EnemyType.BOSSES.length + 1);
+            roster[roster.length - 1] = map.boss;
+            int bosses = wave == Game.FINAL_WAVE ? roster.length : Math.min(roster.length, 1 + wave / 10);
             int lead = wave / BOSS_EVERY - 1;
             for (int k = 0; k < bosses; k++) {
-                plan.add(5 + k * 6f, EnemyType.BOSSES[Math.floorMod(lead - k, EnemyType.BOSSES.length)]);
+                float gap = wave == Game.FINAL_WAVE ? FINAL_BOSS_GAP : BOSS_GAP;
+                plan.add(5 + k * gap, roster[Math.floorMod(lead - k, roster.length)]);
             }
         }
         plan.spawns.sort(Comparator.comparingDouble(Spawn::time));

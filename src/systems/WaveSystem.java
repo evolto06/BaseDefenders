@@ -74,7 +74,7 @@ public final class WaveSystem implements GameSystem {
         game.mana += bonus;
         game.wave++;
         game.activePlan = game.nextPlan;
-        game.nextPlan = WavePlan.forWave(game.wave + 1);
+        game.nextPlan = WavePlan.forWave(game.wave + 1, game.map);
         game.spawnIndex = 0;
         game.spawnClock = 0;
         game.waveCleared = false;

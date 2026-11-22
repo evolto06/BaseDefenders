@@ -4,6 +4,7 @@ import components.Enemy;
 import components.Health;
 import components.Position;
 import components.Projectile;
+import components.Status;
 import ecs.GameSystem;
 import ecs.Query;
 import ecs.Store;
@@ -34,6 +35,7 @@ public final class ProjectileSystem implements GameSystem {
     private final Store<Position> positions;
     private final Store<Health> healths;
     private final Store<Enemy> enemies;
+    private final Store<Status> statuses;
 
     public ProjectileSystem(Game game) {
         this.game = game;
@@ -42,6 +44,7 @@ public final class ProjectileSystem implements GameSystem {
         this.positions = game.world.store(Position.class);
         this.healths = game.world.store(Health.class);
         this.enemies = game.world.store(Enemy.class);
+        this.statuses = game.world.store(Status.class);
     }
 
     @Override
@@ -68,11 +71,15 @@ public final class ProjectileSystem implements GameSystem {
         return pr.progress >= 1;
     }
 
-    /** Chases the target; if it dies mid-flight, carries on to where it was. Returns true on arrival. */
+    /**
+     * Chases the target; if it dies or burrows mid-flight, carries on to where it was. Returns
+     * true on arrival.
+     */
     private boolean flyHoming(Projectile pr, Position p, float dt) {
         Position tp = positions.get(pr.target);
         Health th = healths.get(pr.target);
-        if (tp != null && th != null && th.hp > 0) {
+        Status ts = statuses.get(pr.target);
+        if (tp != null && th != null && th.hp > 0 && (ts == null || ts.burrowTime <= 0)) {
             pr.tx = tp.x;
             pr.ty = tp.y;
         } else {

@@ -138,3 +138,38 @@
 - The Golem is a hulk of mossy boulders with a molten crack; the Lich carries a staff and orb.
 - The Gargoyle crouches under wings arched overhead, so it no longer reads as a grey Bat, and the
   Wraith is a hooded spectre with two cold lights instead of a plain ghost.
+
+## 2.8.0 — Monsters that answer the freeze
+- Freezing everything with Glacier Lances is no longer a safe plan: five new monsters each punish
+  it in a different way.
+- Aegis Warden (all maps, from wave 6): shields the monsters around it every five seconds. A
+  shield swallows the next hit whole, freeze and all, so slow heavy shots are wasted on it while
+  rapid fire, chains, pulses and damage over time break it. A hex silences it, and Witch Hunters
+  and Hex Totems go for it first.
+- Each map now has a resident monster, met only there. It arrives on wave 8 and leads a group
+  every other wave after that:
+    - Green Meadow, Blink Imp: blinks ahead down the road when frozen or hit hard.
+    - Dusty Canyon, Dune Borer: burrows under the road, where nothing can touch it, and comes
+      up thawed.
+    - Frostbite Pass, Yeti: slows and freezes mend it instead.
+    - Ember Fields, Salamander: fireproof, thaws from a freeze in a quarter of the time and
+      sprints off, and slows only half hold it.
+- A hex switches every one of these powers off.
+- Tips introduce the Warden and each map's resident the wave before they arrive.
+- In a test with a fixed defence of fourteen tier-3 towers, an all-Glacier-Lance build now falls
+  up to five waves sooner, while a mixed build does as well as before.
+
+## 2.9.0 — Map bosses
+- Each map now has a boss of its own. It leads wave 25, which used to bring the Golem back, and
+  joins the final wave beside the four shared bosses:
+    - Green Meadow, Elder Treant: armored bark, and roots that tangle the two towers nearest
+      it so they cannot fire for a few seconds.
+    - Dusty Canyon, Sand Wyrm: burrows out of reach like a Dune Borer and calls up Borers.
+    - Frostbite Pass, Frost Giant: cold mends it, and its breath halves the fire rate of
+      every tower near it.
+    - Ember Fields, Phoenix: flies, is fireproof, and rises again at half strength unless it
+      dies hexed.
+- Wave 30 fields all five bosses, 14 seconds apart instead of 6, so the finale is a gauntlet
+  rather than a single crush.
+- Tangled towers are bound with vines and chilled towers ringed with frost. A tip warns of each
+  map boss the wave before it arrives.

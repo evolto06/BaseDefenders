@@ -71,6 +71,9 @@ public final class RenderSystem {
     private static final Color[] PORTAL_ARCS = {new Color(0x9E81D0), new Color(0x8369AE), new Color(0x66518A)};
     private static final Color HURT = new Color(220, 38, 38), FROST_GLAZE = new Color(186, 230, 253);
     private static final Color FLAK_SHELL = new Color(0x404040);
+    private static final Color SHIELD = new Color(0xFDE68A);
+    private static final Color ROOT = new Color(0x6B8E23), ROOT_DARK = new Color(0x3F2A14);
+    private static final Color MOUND = new Color(0xB08D57), MOUND_DARK = new Color(0x6B5233);
     private static final Color BOSS_BACK = new Color(0x3A1D1D);
     private static final Color PLASMA_SHOT = new Color(0xE879F9), ICE_SHOT = new Color(0xBAE6FD);
     private static final Color ACID_SHOT = new Color(0xA3E635), SUN_SHOT = new Color(0xFDBA74);
@@ -284,6 +287,13 @@ public final class RenderSystem {
                     g.drawImage(stamps.glow(Color.WHITE, 8, t.recoil * 170 / 255), x + HALF - 4, tip - 4, null);
                 }
             }
+            // A Frost Giant's breath rimes the tower over; a Treant's roots bind it.
+            if (t.chillTime > 0) pixels.ring(x + HALF, y + HALF, HALF - 3, 2, CHILL, 0.7f);
+            if (t.tangleTime > 0) {
+                pixels.ring(x + HALF, y + HALF, HALF - 6, 2, ROOT_DARK, 0.9f);
+                pixels.line(x + 7, y + TILE - 7, x + TILE - 9, y + 9, 3, ROOT, 0.9f);
+                pixels.line(x + 9, y + 9, x + TILE - 7, y + TILE - 7, 3, ROOT, 0.9f);
+            }
         }
     }
 
@@ -298,14 +308,24 @@ public final class RenderSystem {
             Sprite sprite = sprites.get(e);
             Health h = healths.get(e);
             Status s = statuses.get(e);
+            int r = Math.round(enemy.type.radius);
+            int cx = Math.round(p.x), cy = Math.round(p.y);
+            if (s != null && s.burrowTime > 0) {
+                // Underground: only a ridge of churned earth shows where it is.
+                int bump = Math.round((float) Math.sin(enemy.animTime * 9) * 1.5f);
+                g.drawImage(stamps.shadow(r), cx - r, cy - r / 2, null);
+                g.setColor(MOUND_DARK);
+                g.fillOval(cx - r, cy - 3, r * 2, 9);
+                g.setColor(MOUND);
+                g.fillOval(cx - r + 4, cy - 5 + bump, r * 2 - 8, 6);
+                continue;
+            }
             int side = sprite.flip ? 1 : 0;
             // A monster with drawn frames steps through them; the rest are animated by squashing.
             int frames = game.assets.enemyFrames(enemy.type);
             int frame = frames > 1 ? (int) (enemy.animTime * FRAME_RATE) % frames : 0;
             BufferedImage image = game.assets.enemy(enemy.type, frame)[side];
             int w = image.getWidth(), ht = image.getHeight();
-            int r = Math.round(enemy.type.radius);
-            int cx = Math.round(p.x), cy = Math.round(p.y);
 
             // Walkers squash and stretch as they step; flyers flap and bob in the air.
             float scaleX, scaleY, lift;
@@ -344,6 +364,11 @@ public final class RenderSystem {
                 if (s.shredTime > 0) ring = statusRing(SHRED, cx, ringY, ring);
                 if (s.rotTime > 0) ring = statusRing(ROT, cx, ringY, ring);
                 if (s.doomTime > 0) statusRing(DOOM, cx, ringY, ring);
+                if (s.shield) {
+                    // A golden bubble that swallows the next hit.
+                    float shimmer = 0.6f + 0.25f * (float) Math.sin(game.uiTime * 6 + e);
+                    pixels.ring(cx, ringY, Math.max(dw, dh) / 2 + 3, 2, SHIELD, shimmer);
+                }
                 // A violet cross: its powers are switched off.
                 if (s.hexTime > 0) g.drawImage(stamps.hexMark(HEX, BAR_BACK), cx - 4, top - 18, null);
             }

@@ -1,6 +1,10 @@
 package game;
 
+import components.Blinker;
+import components.Burrower;
+import components.Chiller;
 import components.Effect;
+import components.Entangler;
 import components.Enemy;
 import components.Healer;
 import components.Health;
@@ -10,6 +14,7 @@ import components.Position;
 import components.Projectile;
 import components.Rally;
 import components.Regen;
+import components.Shielder;
 import components.Sprite;
 import components.Status;
 import components.Summoner;
@@ -76,6 +81,15 @@ public final class Prefabs {
                 world.add(e, new Summoner(EnemyType.SKELETON, 2, 5f));
             }
             case HYDRA -> world.add(e, new Regen(0.006f));
+            case WARDEN -> world.add(e, new Shielder(80, 5f));
+            case IMP -> world.add(e, new Blinker(70, 3.5f));
+            case BORER -> world.add(e, new Burrower(3f, 2.5f));
+            case TREANT -> world.add(e, new Entangler(150, 2, 3.5f, 6f));
+            case SAND_WYRM -> {
+                world.add(e, new Burrower(4f, 3f));
+                world.add(e, new Summoner(EnemyType.BORER, 2, 7f));
+            }
+            case FROST_GIANT -> world.add(e, new Chiller(130));
             default -> { }
         }
         return e;

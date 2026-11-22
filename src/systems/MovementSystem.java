@@ -14,6 +14,8 @@ import java.awt.Color;
 /** Walks enemies along their route, or back down it while they flee; those that reach the end cost lives. */
 public final class MovementSystem implements GameSystem {
     private static final Color LEAK = new Color(0xFF5A5A);
+    /** A Dune Borer tunnels this much faster than it walks. */
+    private static final float BURROW_SPEED = 1.3f;
 
     private final Game game;
     private final Query query;
@@ -47,30 +49,35 @@ public final class MovementSystem implements GameSystem {
             enemy.animTime += dt;
 
             float budget = f.speed * dt * (s == null ? 1 : (1 + s.haste) * (1 - s.slow));
+            if (s != null && s.burrowTime > 0) budget *= BURROW_SPEED;
             if (s != null && s.fearTime > 0) {
                 retreat(f, p, sprites.get(e), budget);
                 continue;
             }
-            while (budget > 0 && f.next < f.xs.length) {
-                float tx = f.xs[f.next] + f.laneX, ty = f.ys[f.next] + f.laneY;
-                float dx = tx - p.x, dy = ty - p.y;
-                float dist = (float) Math.sqrt(dx * dx + dy * dy);
-                if (dist <= budget) {
-                    p.x = tx;
-                    p.y = ty;
-                    f.next++;
-                    f.remaining -= dist;
-                    budget -= dist;
-                } else {
-                    p.x += dx / dist * budget;
-                    p.y += dy / dist * budget;
-                    f.remaining -= budget;
-                    budget = 0;
-                    Sprite sprite = sprites.get(e);
-                    if (sprite != null && Math.abs(dx) > 1) sprite.flip = dx < 0;
-                }
-            }
+            advance(f, p, sprites.get(e), budget);
             if (f.next >= f.xs.length) reachBase(e, enemy, p);
+        }
+    }
+
+    /** Carries a monster {@code budget} pixels on along its route, stopping at the end of it. */
+    static void advance(PathFollower f, Position p, Sprite sprite, float budget) {
+        while (budget > 0 && f.next < f.xs.length) {
+            float tx = f.xs[f.next] + f.laneX, ty = f.ys[f.next] + f.laneY;
+            float dx = tx - p.x, dy = ty - p.y;
+            float dist = (float) Math.sqrt(dx * dx + dy * dy);
+            if (dist <= budget) {
+                p.x = tx;
+                p.y = ty;
+                f.next++;
+                f.remaining -= dist;
+                budget -= dist;
+            } else {
+                p.x += dx / dist * budget;
+                p.y += dy / dist * budget;
+                f.remaining -= budget;
+                budget = 0;
+                if (sprite != null && Math.abs(dx) > 1) sprite.flip = dx < 0;
+            }
         }
     }
 

@@ -65,6 +65,7 @@ public final class DeathSystem implements GameSystem {
                     game.prefabs.enemy(pieces, enemy.hpScale, p.x + shift, p.y + shift,
                             f.laneX + shift, f.laneY + shift, f.xs, f.ys, f.next, f.remaining);
                 }
+                if (enemy.type == EnemyType.PHOENIX) game.prefabs.explosion(p.x, p.y, 40, enemy.type.color);
             }
             if (s != null && s.doomTime > 0) {
                 // Doomed: it goes up in a blast that scales with how tough it was.

@@ -9,7 +9,9 @@ import java.util.Arrays;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import systems.BlinkSystem;
 import systems.BuildSystem;
+import systems.BurrowSystem;
 import systems.DeathSystem;
 import systems.EconomySystem;
 import systems.EffectSystem;
@@ -21,6 +23,8 @@ import systems.MovementSystem;
 import systems.ProjectileSystem;
 import systems.RallySystem;
 import systems.RenderSystem;
+import systems.ShieldSystem;
+import systems.SiegeSystem;
 import systems.SpatialSystem;
 import systems.StatusSystem;
 import systems.SummonSystem;
@@ -66,8 +70,8 @@ public final class Game {
     public BufferedImage background = assets.background(map);
     public final Random rng = new Random();
     public final SpatialGrid grid = new SpatialGrid(world);
-    public final Combat combat = new Combat(world);
     public final Prefabs prefabs = new Prefabs(world, level, assets, rng);
+    public final Combat combat = new Combat(world, prefabs);
 
     /** Raw input, written by the UI thread and drained by the input system. */
     public final Queue<InputEvent> input = new ConcurrentLinkedQueue<>();
@@ -126,10 +130,14 @@ public final class Game {
             new WaveSystem(this),
             new EconomySystem(this),
             new StatusSystem(this),
+            new BlinkSystem(this),
+            new BurrowSystem(this),
             new MovementSystem(this),
             new HealerSystem(this),
             new RallySystem(this),
             new SummonSystem(this),
+            new ShieldSystem(this),
+            new SiegeSystem(this),
             new SpatialSystem(this),
             new TowerSystem(this),
             new ProjectileSystem(this),
@@ -169,7 +177,7 @@ public final class Game {
         lives = START_LIVES;
         wave = 0;
         kills = 0;
-        nextPlan = WavePlan.forWave(1);
+        nextPlan = WavePlan.forWave(1, map);
         activePlan = null;
         waveTimer = 0;
         enemyCount = 0;
