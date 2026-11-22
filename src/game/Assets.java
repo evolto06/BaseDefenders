@@ -120,6 +120,10 @@ public final class Assets {
     /** The frames a monster is drawn with, in order. */
     private static BufferedImage[] frameArt(EnemyType type) {
         if (type == EnemyType.DRAGON) return new BufferedImage[] {dragon(true), dragon(false)};
+        if (type == EnemyType.PHOENIX || type == EnemyType.PHOENIX_REBORN) {
+            boolean reborn = type == EnemyType.PHOENIX_REBORN;
+            return new BufferedImage[] {phoenix(true, reborn), phoenix(false, reborn)};
+        }
         return new BufferedImage[] {enemyArt(type)};
     }
 
@@ -526,34 +530,35 @@ public final class Assets {
                 "................",
             }, "FoYLykldb", 0xFB923C, 0x3B0F05, 0xFFF3A0, 0xFB8B3C, 0xFDE047, 0x101010, 0xE8590C, 0xB3361A,
                     0xFFD08A);
-            // An ancient tree in blossom, its face sunk into the bark and roots spread wide.
+            // A striding giant of living wood: root feet, branch arms, a mossy beard and a leafy crown.
             case TREANT -> pixelArt(new String[] {
-                ".....oooLLLo.oLLLLoo....",
-                "...ooLLLLLlLoLLLLlLLo...",
-                "..oLLLllllLLLLlfllLLLo..",
-                ".oLLllflnllLlllllnllLLo.",
-                "oLLlllnnllllllnnllllLlo.",
-                "oLllflnlllflnlllllfnllLo",
-                ".ollnnlllnnllllnnllllno.",
-                "oLLnnolnnnolllnnolnnnLLo",
-                "oLlnooonnBBbnnbBBononlLo",
-                ".onoobbbbBDbbBDbBBboono.",
-                "..obbBobBBDbBBDBBDBbbo..",
-                ".obBooobDkkkBkkkDBooBbo.",
-                ".oBo..obBkeDBDekBBo.oBo.",
-                "..o...obBBDbBBDBBDo..o..",
-                "......obBbDbbBDbBBo.....",
-                "......obBkkkkkkkBBo.....",
-                "......obBkDkkkDkBDo.....",
-                "......obBBkkkkkBBBo.....",
-                "......obbBDbBBDbBDo.....",
-                "......obBBDbBBDBBBo.....",
-                "....oobbBBDbBBDBBDoo....",
-                "..oobBBobBooooBboBBboo..",
-                ".obBBoo.obBooBbo.ooBBbo.",
-                "..ooo....oo..oo....ooo..",
-            }, "oLlfnBbDke", 0x1A1008, 0x9BD94E, 0x5E9E2E, 0xF9A8D4, 0x2F5E1C, 0x5E4024, 0x8A6238, 0x37230F,
-                    0x140C05, 0xE6FF5A);
+                "......ofoLLooLLoLo......",
+                ".....oLLlLlnLlLlfLo.....",
+                "....oLLloooooooolLLo....",
+                ".....olobbBBBBBDolo.....",
+                ".....oobbBBBBBBDDoo.....",
+                ".....oobDDDBBDDDDoo.....",
+                "..ooooobkeeBBkeeDooooo..",
+                ".oLfloobBBBDBBBBDooLflo.",
+                ".oLlnnobBkkkkkkBDonllno.",
+                "oobbBDoobBDkkDBDooDBbboo",
+                "oobBDobbgGgGgGgGDDoDBboo",
+                "oobBDobBBgGgGgGBBDoDBboo",
+                "oobBDobBDbgGgGBDBDoDBboo",
+                "oobBDobBDbBBeeeDBDoDBboo",
+                "oobBDobBDbBBBeBDBDoDBboo",
+                "oobBDobbBDbBBBBDBBoDBboo",
+                "oobDbDobBDbBBBDbDoDbDboo",
+                "ooDoDoobBDbgGBBDDooDoDoo",
+                ".oooooooooooooooooooooo.",
+                "..o.oobbBDooobBBDo.o.o..",
+                ".....obBBDoobbBBDo......",
+                "....obBDbDoobBDbDo......",
+                "....oDoDoDooDoDoDo......",
+                ".....o.o.o..o.o.o.......",
+            }, "ofLlnbBDkegG",
+                    0x1A1008, 0xF9A8D4, 0x9BD94E, 0x5E9E2E, 0x2F5E1C, 0xA97B4C, 0x6B4A2B, 0x3F2814,
+                    0x140C05, 0xE6FF5A, 0x8DB85A, 0x4E7A2E);
             // A plated worm rearing out of a dune, its round maw ringed with teeth.
             case SAND_WYRM -> pixelArt(new String[] {
                 ".............ooAooAoo...",
@@ -611,60 +616,8 @@ public final class Assets {
             }, "ocCisKSIewjfFWlLg", 0x0F1E2E, 0xE0F2FE, 0x67E8F9, 0xCFF4FF, 0x7DB4D6, 0x23415F, 0x4A7FA6,
                     0x8BD9F5, 0xBFF6FF, 0xF1F5F9, 0x6B4A2B, 0xE8E2D6, 0xB8AE9C, 0xBFD3E6, 0x6B4A2B, 0x8B6B4A,
                     0xFBBF24);
-            // A firebird with its wings raised and streamers of flame for a tail.
-            case PHOENIX -> pixelArt(new String[] {
-                "..o.......................",
-                ".oro.....o................",
-                ".orfo...oro..o.....o......",
-                ".orFfo.orfo.oro...oro.....",
-                ".orFFforFfoorfo..orfro....",
-                "..orFFfrFFforFfoorFrFro...",
-                "...orFFFFFFfFFforfFFyFo...",
-                "....orfFyyFFFFfoooFyyFFo..",
-                ".....orfyYyyFfo..oFykFbbo.",
-                "......orffyyFfooo.oFFFbo..",
-                ".......oorrffFFFfoofFfo...",
-                ".........oofFyyyFfoooo....",
-                ".........ofFyYYYyFfo......",
-                ".........ofFyYYyyFro......",
-                ".......ooorffFFFfro.......",
-                "....ooorrfFFrrrrro........",
-                ".ooorrfFFoFoobobo.........",
-                "orrfFoofFooFobbbo.........",
-                ".orooorFo.ofoooo..........",
-                "..o.oroo.oro..............",
-                ".....o....o...............",
-                "..........................",
-                "..........................",
-                "..........................",
-            }, "orfFyYkb", 0x4A0E05, 0xC2260E, 0xEA580C, 0xFB923C, 0xFDE047, 0xFFF7C2, 0x1A0505, 0xFACC15);
-            // The Phoenix risen again, burning pale gold.
-            case PHOENIX_REBORN -> pixelArt(new String[] {
-                "..o.......................",
-                ".oro.....o................",
-                ".orfo...oro..o.....o......",
-                ".orFfo.orfo.oro...oro.....",
-                ".orFFforFfoorfo..orfro....",
-                "..orFFfrFFforFfoorFrFro...",
-                "...orFFFFFFfFFforfFFyFo...",
-                "....orfFyyFFFFfoooFyyFFo..",
-                ".....orfyYyyFfo..oFykFbbo.",
-                "......orffyyFfooo.oFFFbo..",
-                ".......oorrffFFFfoofFfo...",
-                ".........oofFyyyFfoooo....",
-                ".........ofFyYYYyFfo......",
-                ".........ofFyYYyyFro......",
-                ".......ooorffFFFfro.......",
-                "....ooorrfFFrrrrro........",
-                ".ooorrfFFoFoobobo.........",
-                "orrfFoofFooFobbbo.........",
-                ".orooorFo.ofoooo..........",
-                "..o.oroo.oro..............",
-                ".....o....o...............",
-                "..........................",
-                "..........................",
-                "..........................",
-            }, "orfFyYkb", 0x5A3A08, 0xF59E0B, 0xFACC15, 0xFDE68A, 0xFEF9C3, 0xFFFFFF, 0x1A0505, 0xFFFFFF);
+            case PHOENIX -> phoenix(true, false);
+            case PHOENIX_REBORN -> phoenix(true, true);
             // A hulk of mossy boulders with burning eyes and a molten crack down its chest.
             case GOLEM -> pixelArt(new String[] {
                 "........................",
@@ -753,6 +706,70 @@ public final class Assets {
         };
         return pixelArt(rows, "orRdmMDyYekw", 0x3B0A0A, 0xD9482B, 0xF47B4F, 0x9C2A17, 0x8E2318, 0xC7452C,
                 0x5C1410, 0xFCD34D, 0xD9A21B, 0xFDE047, 0x140606, 0xFFF7ED);
+    }
+
+    /**
+     * The Phoenix, seen from the side and facing right, with its near wing raised or beaten down.
+     * Reborn, it burns pale gold.
+     */
+    private static BufferedImage phoenix(boolean wingUp, boolean reborn) {
+        String[] rows = wingUp ? new String[] {
+            "...oro......o...............",
+            "...orFo....oro.o..o.........",
+            "...orFfo..orFoorooroo.......",
+            "....orFfoorFfoorrrorro......",
+            "....orFFfrFFforForFFro......",
+            ".....orFFFFFFfrFoRFyyFoo....",
+            ".....orfFyyFFFFfRrFywkFbo...",
+            "......orfyYyyFffrfFyyyFbBo..",
+            ".......orfyYYyfooooFyyFoBo..",
+            "........orffyyfooofFyyFoo...",
+            ".........oorrfFFFfFyyFo.....",
+            "..........ooFyyyfFyFoo......",
+            "oo.....ooorFyYYYYyyFo.......",
+            "yFo..oorrfFFyYYYYyyfo.......",
+            "oFfoorfFFyoofyyyyyfo........",
+            ".offFFyorfFyoffffoo.........",
+            "..ooorrfFyooooooo...........",
+            "..orfFFooooofFyo............",
+            ".orFooo.oorfFoo.............",
+            "orFo...orfFoo...............",
+            "oyo...orFoo.................",
+            ".o...ofyo...................",
+            "......oo....................",
+            "............................",
+        } : new String[] {
+            "............................",
+            "...............o..o.........",
+            "..............orooroo.......",
+            "...............orrorro......",
+            "................orFFro......",
+            ".................oFyyFoo....",
+            ".................oFywkFbo...",
+            ".................oFyyyFbBo..",
+            "..................oFyyFoBo..",
+            ".............ooooofFyyFoo...",
+            "............oFFFFfFyyFo.....",
+            "..........ooFyyyfFyFoo......",
+            "oo.....ooorFyYrrfyyFo.......",
+            "yFo..oorrfFFrffyyfyfo.......",
+            "oFfoorfFFyorfyYYyffo........",
+            ".offFFyorfrfyYyyFffFo.......",
+            "..ooorrfFrfFyyFFFFffo.......",
+            "..orfFFoorFFFFFFfrFro.......",
+            ".orFoooorFFfrFFforFRo.......",
+            "orFo...orFfoorFfooro........",
+            "oyo...orFfo..orFo.o.........",
+            ".o...ofrFo....oro...........",
+            "......oro......o............",
+            ".......o....................",
+        };
+        String keys = "orFfRywkbYB";
+        return reborn
+                ? pixelArt(rows, keys, 0x5A3A08, 0xF59E0B, 0xFDE68A, 0xFACC15, 0xB45309, 0xFEF9C3,
+                        0xFFFFFF, 0x1A0505, 0xFFFFFF, 0xFFFFFF, 0xFDE68A)
+                : pixelArt(rows, keys, 0x4A0E05, 0xC2260E, 0xFB923C, 0xEA580C, 0x7A1505, 0xFDE047,
+                        0xFFFFFF, 0x1A0505, 0xFACC15, 0xFFF7C2, 0xB45309);
     }
 
     /**
