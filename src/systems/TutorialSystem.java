@@ -14,6 +14,7 @@ public final class TutorialSystem implements GameSystem {
     private static final float FULL_MANA_REPEAT = 45;
     private static final int MERGE = 1, FUSE = 2, BATS = 4, GOLEM = 8, HEALERS = 16, KNIGHTS = 32;
     private static final int DRAGON = 64, LICH = 128, HYDRA = 256, WARDEN = 512, RESIDENT = 1024;
+    private static final int MAP_BOSS = 2048;
 
     private final Game game;
     private final Query towerQuery;
@@ -70,6 +71,8 @@ public final class TutorialSystem implements GameSystem {
             show(LICH, "A Lich is coming next wave. It heals and raises Skeletons until something hexes it.");
         } else if (unseen(HYDRA) && coming(EnemyType.HYDRA)) {
             show(HYDRA, "A Hydra is coming next wave. It regrows its health and splits when slain; a hex stops both.");
+        } else if (unseen(MAP_BOSS) && coming(game.map.boss)) {
+            show(MAP_BOSS, bossTip(game.map.boss));
         } else if (fullManaCooldown <= 0 && game.mana >= game.manaCap() - 1) {
             game.hint = "Your mana is full and going to waste. Build or upgrade something.";
             game.hintTime = SHOW_SECONDS / 2;
@@ -89,6 +92,21 @@ public final class TutorialSystem implements GameSystem {
             case SALAMANDER -> "Salamanders next wave: they shrug off freezes in a flash and sprint off, "
                     + "and fire cannot hurt them. Try poison.";
             default -> type.label + " next wave. " + type.trait;
+        };
+    }
+
+    /** What to say before a map's own boss first shows up. */
+    private static String bossTip(EnemyType type) {
+        return switch (type) {
+            case TREANT -> "The Elder Treant comes next wave. Its roots stop the towers nearest it firing: "
+                    + "keep some firepower back from the road, or hex it.";
+            case SAND_WYRM -> "The Sand Wyrm comes next wave. It burrows out of reach and calls up Dune Borers; "
+                    + "a hex keeps it above ground.";
+            case FROST_GIANT -> "The Frost Giant comes next wave. Cold mends it and it slows the towers near it: "
+                    + "hit it hard from range.";
+            case PHOENIX -> "The Phoenix comes next wave. Fire cannot hurt it, and it rises again unless it "
+                    + "dies hexed.";
+            default -> "The " + type.label + " comes next wave. " + type.trait;
         };
     }
 

@@ -72,6 +72,7 @@ public final class RenderSystem {
     private static final Color HURT = new Color(220, 38, 38), FROST_GLAZE = new Color(186, 230, 253);
     private static final Color FLAK_SHELL = new Color(0x404040);
     private static final Color SHIELD = new Color(0xFDE68A);
+    private static final Color ROOT = new Color(0x6B8E23), ROOT_DARK = new Color(0x3F2A14);
     private static final Color MOUND = new Color(0xB08D57), MOUND_DARK = new Color(0x6B5233);
     private static final Color BOSS_BACK = new Color(0x3A1D1D);
     private static final Color PLASMA_SHOT = new Color(0xE879F9), ICE_SHOT = new Color(0xBAE6FD);
@@ -285,6 +286,13 @@ public final class RenderSystem {
                     int tip = y + HALF - Math.round(t.type.emitterLift());
                     g.drawImage(stamps.glow(Color.WHITE, 8, t.recoil * 170 / 255), x + HALF - 4, tip - 4, null);
                 }
+            }
+            // A Frost Giant's breath rimes the tower over; a Treant's roots bind it.
+            if (t.chillTime > 0) pixels.ring(x + HALF, y + HALF, HALF - 3, 2, CHILL, 0.7f);
+            if (t.tangleTime > 0) {
+                pixels.ring(x + HALF, y + HALF, HALF - 6, 2, ROOT_DARK, 0.9f);
+                pixels.line(x + 7, y + TILE - 7, x + TILE - 9, y + 9, 3, ROOT, 0.9f);
+                pixels.line(x + 9, y + 9, x + TILE - 7, y + TILE - 7, 3, ROOT, 0.9f);
             }
         }
     }

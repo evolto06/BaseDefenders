@@ -1,6 +1,7 @@
 package game;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -24,6 +25,8 @@ public final class WavePlan {
      */
     private static final int RESIDENT_WAVE = 8;
     private static final int BOSS_EVERY = 5;
+    /** Seconds between bosses on a boss wave; the final wave spreads its five out further. */
+    private static final float BOSS_GAP = 6, FINAL_BOSS_GAP = 14;
     /** Largest number of one monster type in a wave, so swarms stay readable. */
     private static final int MAX_GROUP = 40;
 
@@ -73,11 +76,15 @@ public final class WavePlan {
         }
         if (bossWave) {
             // Each boss wave is led by the next boss in line, backed by the ones before it, so
-            // a new boss arrives beside a familiar one and the final wave fields all four.
-            int bosses = 1 + wave / 10;
+            // a new boss arrives beside a familiar one. The map's own boss is last in line: it
+            // leads wave 25, and the final wave fields every boss.
+            EnemyType[] roster = Arrays.copyOf(EnemyType.BOSSES, EnemyType.BOSSES.length + 1);
+            roster[roster.length - 1] = map.boss;
+            int bosses = wave == Game.FINAL_WAVE ? roster.length : Math.min(roster.length, 1 + wave / 10);
             int lead = wave / BOSS_EVERY - 1;
             for (int k = 0; k < bosses; k++) {
-                plan.add(5 + k * 6f, EnemyType.BOSSES[Math.floorMod(lead - k, EnemyType.BOSSES.length)]);
+                float gap = wave == Game.FINAL_WAVE ? FINAL_BOSS_GAP : BOSS_GAP;
+                plan.add(5 + k * gap, roster[Math.floorMod(lead - k, roster.length)]);
             }
         }
         plan.spawns.sort(Comparator.comparingDouble(Spawn::time));

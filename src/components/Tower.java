@@ -16,6 +16,10 @@ public final class Tower {
     public float recoil;
     /** Beam towers: 0..1 build-up on the held target. */
     public float ramp;
+    /** While positive, an Elder Treant's roots hold the tower and it cannot fire. */
+    public float tangleTime;
+    /** While positive, a Frost Giant's breath slows the tower's reload. */
+    public float chillTime;
     /** Lifetime statistics shown on the tower's card. */
     public float damageDealt;
     public int kills;

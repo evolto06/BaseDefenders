@@ -25,6 +25,8 @@ public final class TowerSystem implements GameSystem {
     private static final float BRITTLE_SECONDS = 3;
     private static final float BEAM_SLOW_SECONDS = 0.4f;
     private static final float BOSS_EXECUTE_FACTOR = 0.25f;
+    /** A chilled tower reloads at this share of its usual speed. */
+    private static final float CHILLED_RELOAD = 0.5f;
     /** Added to a candidate's score to push it behind every candidate without the penalty. */
     private static final float LOW_PRIORITY = 100_000;
     /** Where an Arc Prism's three lenses sit relative to the tile centre, one per beam. */
@@ -73,11 +75,18 @@ public final class TowerSystem implements GameSystem {
             int e = towerQuery.get(i);
             Tower t = towers.get(e);
             Position p = positions.get(e);
-            t.cooldown -= dt;
+            t.cooldown -= t.chillTime > 0 ? dt * CHILLED_RELOAD : dt;
+            if (t.chillTime > 0) t.chillTime -= dt;
             t.recoil = Math.max(0, t.recoil - dt * 5);
+            boolean tangled = t.tangleTime > 0;
+            if (tangled) {
+                // Held by roots: it keeps aiming but cannot fire, nor bank up shots for later.
+                t.tangleTime -= dt;
+                t.cooldown = Math.max(0, t.cooldown);
+            }
 
             float range = t.type.range(t.tier);
-            boolean ready = t.cooldown <= 0;
+            boolean ready = t.cooldown <= 0 && !tangled;
             boolean beam = t.type.attack == Attack.BEAM;
             // Beams hold their target to build up heat. Everything else re-picks whenever it
             // is ready to fire, and in between keeps tracking so the turret turns smoothly.

@@ -2,7 +2,9 @@ package game;
 
 import components.Blinker;
 import components.Burrower;
+import components.Chiller;
 import components.Effect;
+import components.Entangler;
 import components.Enemy;
 import components.Healer;
 import components.Health;
@@ -82,6 +84,12 @@ public final class Prefabs {
             case WARDEN -> world.add(e, new Shielder(80, 5f));
             case IMP -> world.add(e, new Blinker(70, 3.5f));
             case BORER -> world.add(e, new Burrower(3f, 2.5f));
+            case TREANT -> world.add(e, new Entangler(150, 2, 3.5f, 6f));
+            case SAND_WYRM -> {
+                world.add(e, new Burrower(4f, 3f));
+                world.add(e, new Summoner(EnemyType.BORER, 2, 7f));
+            }
+            case FROST_GIANT -> world.add(e, new Chiller(130));
             default -> { }
         }
         return e;

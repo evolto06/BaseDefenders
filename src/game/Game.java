@@ -24,6 +24,7 @@ import systems.ProjectileSystem;
 import systems.RallySystem;
 import systems.RenderSystem;
 import systems.ShieldSystem;
+import systems.SiegeSystem;
 import systems.SpatialSystem;
 import systems.StatusSystem;
 import systems.SummonSystem;
@@ -136,6 +137,7 @@ public final class Game {
             new RallySystem(this),
             new SummonSystem(this),
             new ShieldSystem(this),
+            new SiegeSystem(this),
             new SpatialSystem(this),
             new TowerSystem(this),
             new ProjectileSystem(this),

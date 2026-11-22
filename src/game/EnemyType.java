@@ -54,9 +54,23 @@ public enum EnemyType {
     HYDRA("Hydra",        700,  24,  3, 10, 22, false, false, 0, 5.00f, 2.0f, 0x1F9E89,
             "Boss. Regrows its health and splits into three Hydra Spawn when slain. Hex it."),
     HYDRA_SPAWN("Hydra Spawn", 90, 48, 1, 3, 13, false, false, 0, 1.00f, 2.0f, 0x1F9E89,
-            "The brood a slain Hydra leaves behind. Costs 3 lives.");
+            "The brood a slain Hydra leaves behind. Costs 3 lives."),
+    TREANT("Elder Treant", 1300, 18, 6, 10, 22, false, false, 0, 5.00f, 2.0f, 0x5B7A2E,
+            "Boss of Green Meadow. Its bark is armored, and its roots tangle the towers nearest it "
+            + "so they cannot fire. Hex it to still the roots. Costs 10 lives."),
+    SAND_WYRM("Sand Wyrm", 900, 26,  3, 10, 22, false, false, 0, 5.00f, 2.0f, 0xC2915A,
+            "Boss of Dusty Canyon. Burrows under the road out of reach and calls up Dune Borers. "
+            + "A hex keeps it above ground and quiet. Costs 10 lives."),
+    FROST_GIANT("Frost Giant", 1000, 22, 3, 10, 22, false, false, 0, 5.00f, 2.0f, 0x7DB4D6,
+            "Boss of Frostbite Pass. Cold mends it, and its frozen breath halves the fire rate of "
+            + "towers near it. Hex it. Costs 10 lives."),
+    PHOENIX("Phoenix",     600, 28,  1, 10, 22, true,  false, 0, 5.00f, 2.0f, 0xF97316,
+            "Boss of Ember Fields. Flies, is fireproof, and rises again from its ashes at half "
+            + "strength unless it dies hexed. Costs 10 lives."),
+    PHOENIX_REBORN("Reborn Phoenix", 300, 34, 1, 10, 20, true, false, 0, 5.00f, 2.0f, 0xFDE047,
+            "A Phoenix risen from its ashes: faster, and fireproof still. Costs 10 lives.");
 
-    /** The bosses, in the order they first appear. */
+    /** The bosses every map shares, in the order they first appear. Each map adds its own after them. */
     public static final EnemyType[] BOSSES = {GOLEM, DRAGON, LICH, HYDRA};
 
     public final String label;
@@ -94,7 +108,7 @@ public enum EnemyType {
 
     public boolean boss() {
         return switch (this) {
-            case GOLEM, DRAGON, LICH, HYDRA -> true;
+            case GOLEM, DRAGON, LICH, HYDRA, TREANT, SAND_WYRM, FROST_GIANT, PHOENIX, PHOENIX_REBORN -> true;
             default -> false;
         };
     }
@@ -116,16 +130,34 @@ public enum EnemyType {
         };
     }
 
-    /** What it breaks into when killed unhexed, or null. */
+    /** Whether the cold mends it instead of slowing or freezing it, while it is not hexed. */
+    public boolean coldborn() {
+        return this == YETI || this == FROST_GIANT;
+    }
+
+    /** Whether burns cannot touch it. */
+    public boolean fireproof() {
+        return switch (this) {
+            case SALAMANDER, PHOENIX, PHOENIX_REBORN -> true;
+            default -> false;
+        };
+    }
+
+    /** What it breaks into, or rises again as, when killed unhexed, or null. */
     public EnemyType splitsInto() {
         return switch (this) {
             case SLIME -> MINI_SLIME;
             case HYDRA -> HYDRA_SPAWN;
+            case PHOENIX -> PHOENIX_REBORN;
             default -> null;
         };
     }
 
     public int splitCount() {
-        return this == HYDRA ? 3 : 2;
+        return switch (this) {
+            case HYDRA -> 3;
+            case PHOENIX -> 1;
+            default -> 2;
+        };
     }
 }

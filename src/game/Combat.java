@@ -28,6 +28,8 @@ public final class Combat {
     private static final float BLINK_HIT = 0.2f;
     /** Share of its health a Yeti regains from a chill, and how often the cold can do that. */
     private static final float COLD_MEND = 0.04f, COLD_GUARD = 0.5f;
+    /** A Frost Giant is too big to mend quickly: a chill restores this share of what it would otherwise. */
+    private static final float BOSS_COLD_MEND = 0.25f;
     /** A Salamander keeps this much of a freeze and of a slow, and bolts this much faster after a freeze. */
     private static final float SALAMANDER_THAW = 0.25f, SALAMANDER_SLOW = 0.5f;
     private static final float FURY = 0.6f, FURY_SECONDS = 3;
@@ -146,8 +148,8 @@ public final class Combat {
         Enemy enemy = enemies.get(entity);
         if (untouchable(s) || enemy == null || unshakable(enemy, s)) return;
         if (!hexed(s)) {
-            if (enemy.type == EnemyType.YETI) {
-                mendFromCold(entity, s);
+            if (enemy.type.coldborn()) {
+                mendFromCold(entity, enemy, s);
                 return;
             }
             if (enemy.type == EnemyType.SALAMANDER) fraction *= SALAMANDER_SLOW;
@@ -163,11 +165,11 @@ public final class Combat {
         Enemy enemy = enemies.get(entity);
         if (untouchable(s) || enemy == null || unshakable(enemy, s)) return;
         if (!hexed(s)) {
+            if (enemy.type.coldborn()) {
+                mendFromCold(entity, enemy, s);
+                return;
+            }
             switch (enemy.type) {
-                case YETI -> {
-                    mendFromCold(entity, s);
-                    return;
-                }
                 case SALAMANDER -> {
                     // Its fire thaws the ice fast, and leaves it furious.
                     seconds *= SALAMANDER_THAW;
@@ -183,12 +185,16 @@ public final class Combat {
         s.stunTime = Math.max(s.stunTime, seconds);
     }
 
-    /** A Yeti is at home in the cold: a chill mends it a little, at most every {@link #COLD_GUARD} seconds. */
-    private void mendFromCold(int entity, Status s) {
+    /**
+     * Yetis and Frost Giants are at home in the cold: a chill mends them a little, at most every
+     * {@link #COLD_GUARD} seconds.
+     */
+    private void mendFromCold(int entity, Enemy enemy, Status s) {
         if (s.coldGuard > 0) return;
         s.coldGuard = COLD_GUARD;
         Health h = healths.get(entity);
-        if (!heal(entity, h.max * COLD_MEND)) return;
+        float share = COLD_MEND * (enemy.type.boss() ? BOSS_COLD_MEND : 1);
+        if (!heal(entity, h.max * share)) return;
         Position p = positions.get(entity);
         if (p != null) prefabs.ring(p.x, p.y, 18, COLD_MEND_RING, 0.35f);
     }
@@ -212,8 +218,7 @@ public final class Combat {
     public void burn(int entity, float dps, float seconds) {
         Status s = statuses.get(entity);
         Enemy enemy = enemies.get(entity);
-        // A Salamander is fireproof.
-        if (untouchable(s) || enemy == null || enemy.type == EnemyType.SALAMANDER) return;
+        if (untouchable(s) || enemy == null || enemy.type.fireproof()) return;
         s.burnDps = Math.max(s.burnDps, dps);
         s.burnTime = Math.max(s.burnTime, seconds);
         s.burnOwner = source;
