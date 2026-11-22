@@ -158,3 +158,18 @@
 - Tips introduce the Warden and each map's resident the wave before they arrive.
 - In a test with a fixed defence of fourteen tier-3 towers, an all-Glacier-Lance build now falls
   up to five waves sooner, while a mixed build does as well as before.
+
+## 2.9.0 — Map bosses
+- Each map now has a boss of its own. It leads wave 25, which used to bring the Golem back, and
+  joins the final wave beside the four shared bosses:
+    - Green Meadow, Elder Treant: armored bark, and roots that tangle the two towers nearest
+      it so they cannot fire for a few seconds.
+    - Dusty Canyon, Sand Wyrm: burrows out of reach like a Dune Borer and calls up Borers.
+    - Frostbite Pass, Frost Giant: cold mends it, and its breath halves the fire rate of
+      every tower near it.
+    - Ember Fields, Phoenix: flies, is fireproof, and rises again at half strength unless it
+      dies hexed.
+- Wave 30 fields all five bosses, 14 seconds apart instead of 6, so the finale is a gauntlet
+  rather than a single crush.
+- Tangled towers are bound with vines and chilled towers ringed with frost. A tip warns of each
+  map boss the wave before it arrives.

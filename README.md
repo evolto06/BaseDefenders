@@ -127,7 +127,7 @@ punish a defence built on freezing everything with Glacier Lances.
 | Ember Fields | Salamander | Fireproof; thaws from a freeze in a quarter of the time and sprints off, and slows only half hold it |
 
 A boss wave comes every fifth wave, led by the next boss in line and backed by the ones before
-it; wave 30 fields all four.
+it. Each map has a boss of its own that leads wave 25, and wave 30 fields all five, spread out.
 
 | Boss | First seen | What it does |
 | --- | --- | --- |
@@ -136,12 +136,20 @@ it; wave 30 fields all four.
 | Lich | 15 | Mends the monsters around it, raises Skeletons, resists magic |
 | Hydra | 20 | Regrows its health and splits into three Hydra Spawn when slain |
 
+| Map | Boss (wave 25) | What it does |
+| --- | --- | --- |
+| Green Meadow | Elder Treant | Armored bark; its roots tangle the two towers nearest it so they cannot fire |
+| Dusty Canyon | Sand Wyrm | Burrows out of reach and calls up Dune Borers |
+| Frostbite Pass | Frost Giant | Cold mends it, and its breath halves the fire rate of towers near it |
+| Ember Fields | Phoenix | Flies, is fireproof, and rises again at half strength unless it dies hexed |
+
 ### Hexes and healing
 
 A **hexed** monster cannot be healed and loses its powers: Shamans and Liches stop healing,
 Trolls and Hydras stop regrowing, Drummers, Wardens and summoners fall silent, Rune Knights lose
-their ward, Wraiths can be slowed, Imps cannot blink, Borers cannot dig, Yetis and Salamanders
-feel the cold like anyone else, and Slimes and Hydras die without splitting. Bosses shake a hex off
+their ward, Wraiths can be slowed, Imps cannot blink, Borers and Wyrms cannot dig, Yetis, Frost
+Giants and Salamanders feel the cold like anyone else, Treants and Frost Giants leave towers
+alone, and Slimes, Hydras and Phoenixes die for good. Bosses shake a hex off
 in half the time. The Hex Totem and five of its hybrids apply it; the Rot Spitter instead makes
 healing hurt its victim.
 
@@ -167,7 +175,7 @@ src/
   safely resolves to "not alive".
 - **Components** are data only and live in one dense array per type; each entity has a bitmask.
 - **Systems** run in a fixed order at a fixed 60 Hz step (`Game.simulation`): waves, economy,
-  status effects, blinks, burrows, movement, healers, drummers, summoners, shields, spatial
+  status effects, blinks, burrows, movement, healers, drummers, summoners, shields, sieges, spatial
   index, towers, projectiles, zones, deaths, effects.
   Input, building and rendering run once per frame and keep working while paused.
 - Global state that is not an entity (mana, lives, wave, UI selection) lives on `Game`.
