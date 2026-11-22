@@ -35,16 +35,17 @@ public final class StatusSystem implements GameSystem {
             if (s.fearTime > 0) s.fearTime -= dt;
             if (s.fearGuard > 0) s.fearGuard -= dt;
             if (s.mendGuard > 0) s.mendGuard -= dt;
+            if (s.shieldBreak > 0) s.shieldBreak -= dt;
             if (s.brittleTime > 0 && (s.brittleTime -= dt) <= 0) s.brittle = 0;
             if (s.doomTime > 0 && (s.doomTime -= dt) <= 0) s.doom = 0;
             if (s.burnTime > 0) {
                 game.combat.source = s.burnOwner;
-                game.combat.damage(e, s.burnDps * dt, DamageType.MAGIC);
+                game.combat.tick(e, s.burnDps * dt, DamageType.MAGIC);
                 if ((s.burnTime -= dt) <= 0) s.burnDps = 0;
             }
             if (s.poisonTime > 0) {
                 game.combat.source = s.poisonOwner;
-                game.combat.damage(e, s.poisonDps * dt, DamageType.MAGIC);
+                game.combat.tick(e, s.poisonDps * dt, DamageType.MAGIC);
                 if ((s.poisonTime -= dt) <= 0) {
                     s.poisonDps = 0;
                     s.contagious = false;

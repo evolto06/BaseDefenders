@@ -30,6 +30,9 @@ public enum EnemyType {
             "Raises Skeletons as it walks. A hex silences it. Costs 2 lives."),
     SKELETON("Skeleton",   14,  58,  0,  1,  9, false, false, 1, 0.40f, 1.5f, 0xE8E0D0,
             "Raised by a Necromancer or a Lich. Weak, but they keep coming."),
+    WARDEN("Aegis Warden", 80, 38,  2,  2, 12, false, false, 6, 1.80f, 2.0f, 0xD4A72C,
+            "Shields the monsters around it. A shield swallows the next hit whole, freeze and all, "
+            + "so fast-firing and area towers break them best. A hex silences it. Costs 2 lives."),
     GOLEM("Golem",       1100,  22,  8, 10, 22, false, false, 0, 5.00f, 2.0f, 0x8A8F98,
             "Boss. Heavy armor, shrugs off slows. Costs 10 lives."),
     DRAGON("Dragon",      650,  27,  3, 10, 22, true,  false, 0, 5.00f, 2.0f, 0xD9482B,
@@ -87,7 +90,7 @@ public enum EnemyType {
     /** Whether it strengthens the monsters around it: the first thing a Witch Hunter shoots. */
     public boolean caster() {
         return switch (this) {
-            case SHAMAN, DRUMMER, NECROMANCER, LICH -> true;
+            case SHAMAN, DRUMMER, NECROMANCER, WARDEN, LICH -> true;
             default -> false;
         };
     }

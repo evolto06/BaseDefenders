@@ -25,6 +25,13 @@ public final class Status {
     public float fearGuard;
     /** Seconds until another healer's pulse can mend it, so stacked healers do not multiply. */
     public float mendGuard;
+    /** An Aegis Warden's shield, which swallows the next hit whole. */
+    public boolean shield;
+    /**
+     * Positive for the rest of the step in which a shield broke, so the effects riding on the
+     * hit that broke it are swallowed too.
+     */
+    public float shieldBreak;
     /** Fraction of extra movement speed from a War Drummer nearby. */
     public float haste, hasteTime;
     /** Towers credited with the lingering effects, or -1. */

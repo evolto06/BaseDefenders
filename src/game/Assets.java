@@ -426,6 +426,26 @@ public final class Assets {
                 "....ooooooooooo.",
             }, "otTdykwbBp", 0x06302B, 0x1F9E89, 0x4FD1BB, 0x13705F, 0xFDE047, 0x101010, 0xFFFFFF, 0xB7F0C8,
                     0x7FD4A8, 0xF43F5E);
+            // A knight behind a great round shield of gold, a red plume on the helm.
+            case WARDEN -> pixelArt(new String[] {
+                "....oo..........",
+                "...orro.........",
+                "..oaaaao........",
+                ".oaaaaaAo.......",
+                ".oakkekAo.......",
+                ".oaaaaaAo.......",
+                "..oaaaAo.oooo...",
+                ".occaaAooGGGGo..",
+                "occcaaaoGGggGGo.",
+                "occcaaaoGgGGgGGo",
+                "occcaaaoGgGrGgGo",
+                "occcaaaoGgGGgGGo",
+                ".occaaaoGGggGGo.",
+                "..oaaAAooGGGGo..",
+                "..oaAoaAo.oooo..",
+                "..ooo.ooo.......",
+            }, "oraAkecGg", 0x2A1E08, 0xDC2626, 0xA8B0C0, 0x6B7385, 0x101010, 0xFDE68A, 0x7A2E2E,
+                    0xD4A72C, 0xFDE68A);
             // A hulk of mossy boulders with burning eyes and a molten crack down its chest.
             case GOLEM -> pixelArt(new String[] {
                 "........................",

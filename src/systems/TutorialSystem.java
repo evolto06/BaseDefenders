@@ -13,7 +13,7 @@ public final class TutorialSystem implements GameSystem {
     private static final float SHOW_SECONDS = 10;
     private static final float FULL_MANA_REPEAT = 45;
     private static final int MERGE = 1, FUSE = 2, BATS = 4, GOLEM = 8, HEALERS = 16, KNIGHTS = 32;
-    private static final int DRAGON = 64, LICH = 128, HYDRA = 256;
+    private static final int DRAGON = 64, LICH = 128, HYDRA = 256, WARDEN = 512;
 
     private final Game game;
     private final Query towerQuery;
@@ -55,6 +55,9 @@ public final class TutorialSystem implements GameSystem {
             show(BATS, "Bats next wave: they fly along the dotted trail, and Mortars cannot hit them.");
         } else if (unseen(HEALERS) && coming(EnemyType.SHAMAN)) {
             show(HEALERS, "Shamans next wave: they heal the monsters around them. A Hex Totem silences them.");
+        } else if (unseen(WARDEN) && coming(EnemyType.WARDEN)) {
+            show(WARDEN, "Aegis Wardens next wave: their shields swallow a whole hit, freeze and all. "
+                    + "Fast or area fire breaks them; a hex silences the Warden.");
         } else if (unseen(KNIGHTS) && coming(EnemyType.KNIGHT)) {
             show(KNIGHTS, "Rune Knights next wave: magic does 60% less to them. Use Ballistas and Mortars, or hex them.");
         } else if (unseen(GOLEM) && coming(EnemyType.GOLEM)) {

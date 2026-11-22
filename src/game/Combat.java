@@ -2,14 +2,16 @@ package game;
 
 import components.Enemy;
 import components.Health;
+import components.Position;
 import components.Status;
 import components.Tower;
 import ecs.Store;
 import ecs.World;
+import java.awt.Color;
 
 /**
- * The single place damage, healing and debuffs are applied, so armor, wards, immunities and
- * hexes stay consistent.
+ * The single place damage, healing and debuffs are applied, so armor, wards, immunities,
+ * shields and hexes stay consistent.
  */
 public final class Combat {
     private static final float MIN_PHYSICAL = 0.2f;
@@ -19,11 +21,18 @@ public final class Combat {
     private static final float BOSS_SLOW = 0.5f, BOSS_STUN = 0.3f, BOSS_HEX = 0.5f;
     /** After fleeing, a monster cannot be frightened again for this long. */
     private static final float FEAR_GUARD = 4;
+    /** A broken shield swallows the rest of the hit: anything else it carries this step. */
+    private static final float SHIELD_BREAK = 0.01f;
+    private static final Color SHIELD = new Color(0xFDE68A);
 
     private final Store<Health> healths;
     private final Store<Status> statuses;
     private final Store<Enemy> enemies;
     private final Store<Tower> towers;
+    private final Store<Position> positions;
+    private final Prefabs prefabs;
+    /** True while a damage-over-time tick is applied: ticks do not break shields. */
+    private boolean ticking;
     /** Running total of health removed, for balance testing. */
     public double totalDamage;
     /**
@@ -32,11 +41,13 @@ public final class Combat {
      */
     public int source = World.NONE;
 
-    public Combat(World world) {
+    public Combat(World world, Prefabs prefabs) {
         healths = world.store(Health.class);
         statuses = world.store(Status.class);
         enemies = world.store(Enemy.class);
         towers = world.store(Tower.class);
+        positions = world.store(Position.class);
+        this.prefabs = prefabs;
     }
 
     public void damage(int entity, float amount, DamageType type) {
@@ -44,6 +55,17 @@ public final class Combat {
         if (h == null || h.hp <= 0) return;
         Status s = statuses.get(entity);
         Enemy enemy = enemies.get(entity);
+        if (s != null && s.shield && !ticking) {
+            // The shield takes the whole hit, and whatever else rides on it, then breaks.
+            s.shield = false;
+            s.shieldBreak = SHIELD_BREAK;
+            Position p = positions.get(entity);
+            if (p != null) {
+                prefabs.ring(p.x, p.y, 22, SHIELD, 0.3f);
+                prefabs.burst(p.x, p.y, SHIELD, 4);
+            }
+            return;
+        }
         if (type == DamageType.PHYSICAL && (s == null || s.shredTime <= 0)) {
             amount = Math.max(amount * MIN_PHYSICAL, amount - h.armor);
         }
@@ -60,6 +82,13 @@ public final class Combat {
         if (amount >= h.max * FLASH_THRESHOLD && enemy != null) enemy.flash = 1;
     }
 
+    /** Damage over time (burn, poison, fields, rot): it does not break shields. */
+    public void tick(int entity, float amount, DamageType type) {
+        ticking = true;
+        damage(entity, amount, type);
+        ticking = false;
+    }
+
     /**
      * Restores health, unless the monster is hexed; a rotting monster is hurt by the same amount
      * instead. Returns whether anything happened.
@@ -71,7 +100,7 @@ public final class Combat {
         if (s != null && s.rotTime > 0) {
             int credited = source;
             source = s.rotOwner;
-            damage(entity, amount, DamageType.MAGIC);
+            tick(entity, amount, DamageType.MAGIC);
             source = credited;
             return true;
         }
@@ -94,19 +123,25 @@ public final class Combat {
         return enemy.type.immune && !hexed(s);
     }
 
+    /** Whether nothing can be laid on the monster now: a shield just broke. */
+    private static boolean untouchable(Status s) {
+        return s == null || s.shieldBreak > 0;
+    }
+
     public void slow(int entity, float fraction, float seconds) {
         Status s = statuses.get(entity);
         Enemy enemy = enemies.get(entity);
-        if (s == null || enemy == null || unshakable(enemy, s)) return;
+        if (untouchable(s) || enemy == null || unshakable(enemy, s)) return;
         if (enemy.type.boss()) fraction *= BOSS_SLOW;
         s.slow = Math.max(s.slow, fraction);
         s.slowTime = Math.max(s.slowTime, seconds);
     }
 
+    /** Freezes the monster in place. */
     public void stun(int entity, float seconds) {
         Status s = statuses.get(entity);
         Enemy enemy = enemies.get(entity);
-        if (s == null || enemy == null || unshakable(enemy, s)) return;
+        if (untouchable(s) || enemy == null || unshakable(enemy, s)) return;
         if (enemy.type.boss()) seconds *= BOSS_STUN;
         s.stunTime = Math.max(s.stunTime, seconds);
     }
@@ -115,7 +150,7 @@ public final class Combat {
     public void fear(int entity, float seconds) {
         Status s = statuses.get(entity);
         Enemy enemy = enemies.get(entity);
-        if (s == null || enemy == null || s.fearGuard > 0 || unshakable(enemy, s)) return;
+        if (untouchable(s) || enemy == null || s.fearGuard > 0 || unshakable(enemy, s)) return;
         if (enemy.type.boss()) seconds *= BOSS_STUN;
         s.fearTime = seconds;
         s.fearGuard = seconds + FEAR_GUARD;
@@ -123,7 +158,7 @@ public final class Combat {
 
     public void burn(int entity, float dps, float seconds) {
         Status s = statuses.get(entity);
-        if (s == null) return;
+        if (untouchable(s)) return;
         s.burnDps = Math.max(s.burnDps, dps);
         s.burnTime = Math.max(s.burnTime, seconds);
         s.burnOwner = source;
@@ -131,7 +166,7 @@ public final class Combat {
 
     public void poison(int entity, float dps, float seconds, boolean contagious) {
         Status s = statuses.get(entity);
-        if (s == null) return;
+        if (untouchable(s)) return;
         s.poisonDps = Math.max(s.poisonDps, dps);
         s.poisonTime = Math.max(s.poisonTime, seconds);
         s.contagious |= contagious;
@@ -140,7 +175,7 @@ public final class Combat {
 
     public void brittle(int entity, float fraction, float seconds) {
         Status s = statuses.get(entity);
-        if (s == null) return;
+        if (untouchable(s)) return;
         s.brittle = Math.max(s.brittle, fraction);
         s.brittleTime = Math.max(s.brittleTime, seconds);
     }
@@ -148,14 +183,14 @@ public final class Combat {
     /** Strips armor for a while. */
     public void shred(int entity, float seconds) {
         Status s = statuses.get(entity);
-        if (s != null) s.shredTime = Math.max(s.shredTime, seconds);
+        if (!untouchable(s)) s.shredTime = Math.max(s.shredTime, seconds);
     }
 
     /** Silences the monster's powers and stops it being healed. Bosses shake it off sooner. */
     public void hex(int entity, float seconds) {
         Status s = statuses.get(entity);
         Enemy enemy = enemies.get(entity);
-        if (s == null || enemy == null) return;
+        if (untouchable(s) || enemy == null) return;
         if (enemy.type.boss()) seconds *= BOSS_HEX;
         s.hexTime = Math.max(s.hexTime, seconds);
     }
@@ -163,7 +198,7 @@ public final class Combat {
     /** Turns the healing the monster receives into damage. */
     public void rot(int entity, float seconds) {
         Status s = statuses.get(entity);
-        if (s == null) return;
+        if (untouchable(s)) return;
         s.rotTime = Math.max(s.rotTime, seconds);
         s.rotOwner = source;
     }
@@ -171,7 +206,7 @@ public final class Combat {
     /** Makes the monster explode for a share of its maximum health if it dies in time. */
     public void doom(int entity, float fraction, float seconds) {
         Status s = statuses.get(entity);
-        if (s == null) return;
+        if (untouchable(s)) return;
         s.doom = Math.max(s.doom, fraction);
         s.doomTime = Math.max(s.doomTime, seconds);
         s.doomOwner = source;

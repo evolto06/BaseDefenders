@@ -13,10 +13,12 @@ public final class WavePlan {
     public record Spawn(float time, EnemyType type) {}
 
     private static final EnemyType[] UNLOCK_ORDER = {
-        EnemyType.SLIME, EnemyType.GOBLIN, EnemyType.ORC, EnemyType.BAT, EnemyType.SHAMAN, EnemyType.WRAITH,
-        EnemyType.TROLL, EnemyType.KNIGHT, EnemyType.GARGOYLE, EnemyType.DRUMMER, EnemyType.NECROMANCER
+        EnemyType.SLIME, EnemyType.GOBLIN, EnemyType.ORC, EnemyType.BAT, EnemyType.WARDEN, EnemyType.SHAMAN,
+        EnemyType.WRAITH, EnemyType.TROLL, EnemyType.KNIGHT, EnemyType.GARGOYLE, EnemyType.DRUMMER,
+        EnemyType.NECROMANCER
     };
-    private static final int[] UNLOCK_WAVE = {1, 2, 3, 4, 7, 9, 11, 13, 16, 18, 21};
+    private static final int[] UNLOCK_WAVE = {1, 2, 3, 4, 6, 7, 9, 11, 13, 16, 18, 21};
+
     private static final int BOSS_EVERY = 5;
     /** Largest number of one monster type in a wave, so swarms stay readable. */
     private static final int MAX_GROUP = 40;

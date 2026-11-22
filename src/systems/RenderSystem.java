@@ -71,6 +71,7 @@ public final class RenderSystem {
     private static final Color[] PORTAL_ARCS = {new Color(0x9E81D0), new Color(0x8369AE), new Color(0x66518A)};
     private static final Color HURT = new Color(220, 38, 38), FROST_GLAZE = new Color(186, 230, 253);
     private static final Color FLAK_SHELL = new Color(0x404040);
+    private static final Color SHIELD = new Color(0xFDE68A);
     private static final Color BOSS_BACK = new Color(0x3A1D1D);
     private static final Color PLASMA_SHOT = new Color(0xE879F9), ICE_SHOT = new Color(0xBAE6FD);
     private static final Color ACID_SHOT = new Color(0xA3E635), SUN_SHOT = new Color(0xFDBA74);
@@ -344,6 +345,11 @@ public final class RenderSystem {
                 if (s.shredTime > 0) ring = statusRing(SHRED, cx, ringY, ring);
                 if (s.rotTime > 0) ring = statusRing(ROT, cx, ringY, ring);
                 if (s.doomTime > 0) statusRing(DOOM, cx, ringY, ring);
+                if (s.shield) {
+                    // A golden bubble that swallows the next hit.
+                    float shimmer = 0.6f + 0.25f * (float) Math.sin(game.uiTime * 6 + e);
+                    pixels.ring(cx, ringY, Math.max(dw, dh) / 2 + 3, 2, SHIELD, shimmer);
+                }
                 // A violet cross: its powers are switched off.
                 if (s.hexTime > 0) g.drawImage(stamps.hexMark(HEX, BAR_BACK), cx - 4, top - 18, null);
             }

@@ -10,6 +10,7 @@ import components.Position;
 import components.Projectile;
 import components.Rally;
 import components.Regen;
+import components.Shielder;
 import components.Sprite;
 import components.Status;
 import components.Summoner;
@@ -76,6 +77,7 @@ public final class Prefabs {
                 world.add(e, new Summoner(EnemyType.SKELETON, 2, 5f));
             }
             case HYDRA -> world.add(e, new Regen(0.006f));
+            case WARDEN -> world.add(e, new Shielder(80, 5f));
             default -> { }
         }
         return e;
