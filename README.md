@@ -106,6 +106,7 @@ seven tower cards over the mana bar, and the wave/speed/pause controls.
 | Goblin | 2 | Fast, comes in swarms |
 | Orc | 3 | Armored: physical hits are reduced (magic ignores armor) |
 | Bat | 4 | Flies straight to the keep along the dotted trail |
+| Aegis Warden | 6 | Shields the monsters around it; a shield swallows the next hit whole, freeze and all |
 | Shaman | 7 | Heals the monsters around it |
 | Wraith | 9 | Cannot be slowed or frozen |
 | Troll | 11 | Regrows its health as it walks |
@@ -113,6 +114,17 @@ seven tower cards over the mana bar, and the wave/speed/pause controls.
 | Gargoyle | 16 | Flies, and is armored |
 | War Drummer | 18 | Speeds up every monster around it |
 | Necromancer | 21 | Raises Skeletons as it walks |
+
+Each map also has a resident monster that is met nowhere else. It arrives on wave 8 and leads a
+group every other wave after that, so every map asks its own question of your defence. All four
+punish a defence built on freezing everything with Glacier Lances.
+
+| Map | Resident | What it does |
+| --- | --- | --- |
+| Green Meadow | Blink Imp | Blinks ahead down the road when frozen or hit hard, shaking off the ice |
+| Dusty Canyon | Dune Borer | Burrows under the road for stretches, untouchable, and comes up thawed |
+| Frostbite Pass | Yeti | Slows and freezes slide off it and mend it instead |
+| Ember Fields | Salamander | Fireproof; thaws from a freeze in a quarter of the time and sprints off, and slows only half hold it |
 
 A boss wave comes every fifth wave, led by the next boss in line and backed by the ones before
 it; wave 30 fields all four.
@@ -127,13 +139,18 @@ it; wave 30 fields all four.
 ### Hexes and healing
 
 A **hexed** monster cannot be healed and loses its powers: Shamans and Liches stop healing,
-Trolls and Hydras stop regrowing, Drummers and summoners fall silent, Rune Knights lose their
-ward, Wraiths can be slowed, and Slimes and Hydras die without splitting. Bosses shake a hex off
+Trolls and Hydras stop regrowing, Drummers, Wardens and summoners fall silent, Rune Knights lose
+their ward, Wraiths can be slowed, Imps cannot blink, Borers cannot dig, Yetis and Salamanders
+feel the cold like anyone else, and Slimes and Hydras die without splitting. Bosses shake a hex off
 in half the time. The Hex Totem and five of its hybrids apply it; the Rot Spitter instead makes
 healing hurt its victim.
 
 Healers do not stack without limit: a monster that was just mended ignores every healer for the
 next 1.5 seconds, and a healing pulse restores only a quarter as much on a boss.
+
+A **shield** takes one hit and everything riding on it (damage, freeze, slow, hex). Poison, burns
+and blizzard fields seep through without breaking it, so rapid fire, chain lightning, pulses and
+damage over time beat Wardens; a single heavy shot is wasted on them.
 
 ## Architecture
 
@@ -150,12 +167,13 @@ src/
   safely resolves to "not alive".
 - **Components** are data only and live in one dense array per type; each entity has a bitmask.
 - **Systems** run in a fixed order at a fixed 60 Hz step (`Game.simulation`): waves, economy,
-  status effects, movement, healers, drummers, summoners, spatial index, towers, projectiles,
-  zones, deaths, effects.
+  status effects, blinks, burrows, movement, healers, drummers, summoners, shields, spatial
+  index, towers, projectiles, zones, deaths, effects.
   Input, building and rendering run once per frame and keep working while paused.
 - Global state that is not an entity (mana, lives, wave, UI selection) lives on `Game`.
 - Enemies are indexed in a uniform grid rebuilt each step, so targeting, splash and chain
-  lightning only look at nearby cells.
+  lightning only look at nearby cells. A burrowed monster is left out of it, which is all it
+  takes to make it untouchable.
 - All art is generated at startup in `game/Assets.java` (ASCII pixel maps for monsters,
   primitives for terrain) and `game/TowerArt.java` (one pixel map per tower).
 - Drawing is built to stay fast without the graphics card, because Java turns its Direct3D
@@ -182,7 +200,7 @@ chart size themselves from `TowerType.BASES`.
 
 To add a monster, add a constant to `EnemyType` and its sprite to `Assets.enemyArt`, give it a
 power by attaching a component in `Prefabs.enemy`, and list it in `WavePlan.UNLOCK_ORDER` (or
-`EnemyType.BOSSES`). Powers should check `Combat.hexed` so a hex can switch them off. A sprite
+`EnemyType.BOSSES`, or make it a map's `MapDef.resident`). Powers should check `Combat.hexed` so a hex can switch them off. A sprite
 is drawn facing right, at any width and height, and shown at `EnemyType.scale` times its size.
 Most monsters are one picture, brought to life by squashing it; one that needs real frames, as
 the Dragon does for its wingbeat, returns them from `Assets.frameArt`.
